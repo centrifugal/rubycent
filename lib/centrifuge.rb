@@ -3,6 +3,11 @@ require "centrifuge/client"
 require 'forwardable'
 
 module Centrifuge
+  if defined?(Rails)
+    class Engine < Rails::Engine
+    end
+  end
+
   class Error < RuntimeError; end
   class AuthenticationError < Error; end
   class ConfigurationError < Error; end

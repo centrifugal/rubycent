@@ -82,6 +82,17 @@ Where `123123` is UNIX timestamp. You can also add user info as valid json strin
 
 	client.token_for('testuser', '123123', "{}")
 
+## Rails assets
+
+To use Centrifuge js client just add this line to your application.js manifest:
+
+	//= require centrifuge
+
+If you want to use sockjs require it before centrifuge:
+
+	//= require sockjs
+	//= require centrifuge
+
 ### Other API
 
 Other API methods, like projects and channels management are unavailable now.
