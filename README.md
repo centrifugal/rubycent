@@ -72,6 +72,16 @@ Gets message history of the channel:
 
 	client.history('test_channel')
 
+### JS Client token generation
+
+Generates token for JS client:
+
+  client.token_for('testuser', '123123')
+
+Where `123123` is UNIX timestamp. You can also add user info as valid json string as third parameter:
+
+  client.token_for('testuser', '123123', "{}")
+
 ### Other API
 
 Other API methods, like projects and channels management are unavailable now.

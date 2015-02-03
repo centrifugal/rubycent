@@ -59,6 +59,15 @@ module Centrifuge
       Centrifuge::Builder.new('history', { channel: channel }, self).process
     end
 
+    def token_for(user, timestamp, user_info = "")
+      sign("#{user}#{timestamp}#{user_info}")
+    end
+
+    def sign(body)
+      dig = OpenSSL::Digest.new('md5')
+      OpenSSL::HMAC.hexdigest(dig, secret, "#{project_id}#{body}")
+    end
+
     def client
       @client ||= begin
         HTTPClient.new.tap do |http|
