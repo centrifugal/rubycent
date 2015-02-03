@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["oleg.bovykin@gmail.com"]
   spec.summary       = %q{Ruby gem for Centrifuge real-time messaging broker}
   spec.description   = %q{Ruby gem for Centrifuge real-time messaging broker}
-  spec.homepage      = "https://github.com/arrowcircle/centrifuge-ruby"
+  spec.homepage      = "https://github.com/centrifugal/centrifuge-ruby"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")

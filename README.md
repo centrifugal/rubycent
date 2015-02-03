@@ -1,6 +1,6 @@
 # Centrifuge
-[![Code Climate](https://codeclimate.com/github/arrowcircle/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/arrowcircle/centrifuge-ruby)
-[![Build Status](https://travis-ci.org/arrowcircle/centrifuge-ruby.svg)](https://travis-ci.org/arrowcircle/centrifuge-ruby)
+[![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
+[![Build Status](https://travis-ci.org/centrifugal/centrifuge-ruby.svg)](https://travis-ci.org/centrifugal/centrifuge-ruby)
 
 Ruby gem for [Centrifuge](https://github.com/centrifugal/centrifuge) real-time messaging broker
 
