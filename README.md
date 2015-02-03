@@ -76,11 +76,11 @@ Gets message history of the channel:
 
 Generates token for JS client:
 
-  client.token_for('testuser', '123123')
+	client.token_for('testuser', '123123')
 
 Where `123123` is UNIX timestamp. You can also add user info as valid json string as third parameter:
 
-  client.token_for('testuser', '123123', "{}")
+	client.token_for('testuser', '123123', "{}")
 
 ### Other API
 
