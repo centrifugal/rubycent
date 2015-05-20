@@ -20,18 +20,20 @@ Or install it yourself as:
 
     $ gem install centrifuge
 
+Compatible version for Centrifuge version 0.8.0 and above are 0.1.0+. Please use 0.0.x versions for older Centrifuge
+
 ## Usage
 
 `Centrifuge::Client` - is main usable class. Start with:
 
-	client = Centrifute::Client.new(scheme: :http, host: :localhost, port: 80, project_id: 'abc', secret: 'cde')
+	client = Centrifute::Client.new(scheme: :http, host: :localhost, port: 80, project_key: 'abc', secret: 'cde')
 
 If you are planning to use only one project, its convenient to set all data and use class methods:
 
 	Centrifuge.scheme = :http
 	Centrifuge.host = 'localhost'
 	Centrifuge.port = 8000
-	Centrifuge.project_id = 'abc'
+	Centrifuge.project_key = 'abc'
 	Centrifuge.secret = 'def'
 
 There are five methds available:

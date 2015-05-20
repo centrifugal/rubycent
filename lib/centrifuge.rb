@@ -16,8 +16,8 @@ module Centrifuge
   class << self
     extend Forwardable
 
-    def_delegators :default_client, :scheme, :host, :port, :project_id, :secret
-    def_delegators :default_client, :scheme=, :host=, :port=, :project_id=, :secret=
+    def_delegators :default_client, :scheme, :host, :port, :project_key, :secret
+    def_delegators :default_client, :scheme=, :host=, :port=, :project_key=, :secret=
 
     # def_delegators :default_client, :authentication_token, :url
     # def_delegators :default_client, :encrypted=, :url=

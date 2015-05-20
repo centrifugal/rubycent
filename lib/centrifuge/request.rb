@@ -38,7 +38,7 @@ module Centrifuge
       when 401
         raise AuthenticationError, body
       when 404
-        raise Error, "404 Not found (#{@uri.path})"
+        raise Error, "404 Not found (#{@uri.path} #{@uri.to_json})"
       when 407
         raise Error, "Proxy Authentication Required"
       else
