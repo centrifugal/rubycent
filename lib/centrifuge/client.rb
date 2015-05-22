@@ -59,7 +59,7 @@ module Centrifuge
       Centrifuge::Builder.new('history', { channel: channel }, self).process
     end
 
-    def token_for(user, timestamp, user_info = "{}")
+    def token_for(user, timestamp, user_info = "")
       sign("#{user}#{timestamp}#{user_info}")
     end
 
