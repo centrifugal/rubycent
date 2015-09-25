@@ -89,13 +89,13 @@ Where `123123` is UNIX timestamp. You can also add user info as valid json strin
 Generates Sign token for a Channel:
 
 ```ruby
-	client.generate_channel_sign(params[:client], params[:channel], "{}")
+	client.generate_channel_sign(params[:client], params[:channels], "{}")
 ```
 
 Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is a list or a single channel. You can also add user info as valid json string as third parameter:
 
 ```ruby
-	client.generate_channel_sign(params[:client], params[:channel], "{"name": "John"}")
+	client.generate_channel_sign(params[:client], params[:channels], "{"name": "John"}")
 ```
 
 You can use this in rails like so:
