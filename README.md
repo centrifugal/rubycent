@@ -111,7 +111,7 @@ You can use this in rails like so:
 	# client = Instance of Centrifuge initialized // check Usage section
 	# params[:channels] = single/array of channels
 	def auth
-	  if current_user
+	  if user_signed_in? # Or use a before_filter
 	    data = {}
 	    sign = client.generate_channel_sign(
 	        params[:client], params[:channels], "{}"
