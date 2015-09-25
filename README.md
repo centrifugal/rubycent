@@ -155,7 +155,7 @@ On client side initialize Centrifuge like so:
 
 	centrifuge.connect();
 
-	* If you using **jbuiler** use raw render(template_name) and use a data-*/window vars attribute and load valid json from there
+	// If you using jbuiler use raw render(template_name) and use a data-*/window vars attribute and load valid json from there
 ```
 
 If you want to batch sign channels request, you can use JS client to batch channels ```centrifuge.startBatching();``` and on the server loop through channels and subscribe. You can read more here: [Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html)
