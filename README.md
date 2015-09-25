@@ -126,7 +126,7 @@ You can use this in rails like so:
 	  end
 	end
 ```
-** On client side initialize Centrifuge like so: **
+On client side initialize Centrifuge like so:
 
 ``` javascript
 
