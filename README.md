@@ -95,7 +95,7 @@ Generates Sign token for a Channel:
 Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is a list or a single channel. You can also add user info as valid json string as third parameter:
 
 ```ruby
-	client.token_for(params[:client], params[:channel], "{"name": "John"}")
+	client.generate_channel_sign(params[:client], params[:channel], "{"name": "John"}")
 ```
 
 You can use this in rails like so:
