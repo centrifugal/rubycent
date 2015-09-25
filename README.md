@@ -84,6 +84,82 @@ Where `123123` is UNIX timestamp. You can also add user info as valid json strin
 
 	client.token_for('testuser', '123123', "{}")
 
+### Channel Sign token generation
+
+Generates Sign token for a Channel:
+
+```ruby
+	client.generate_channel_sign(params[:client], params[:channel], "{}")
+```
+
+Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is a list or a single channel. You can also add user info as valid json string as third parameter:
+
+```ruby
+	client.token_for(params[:client], params[:channel], "{"name": "John"}")
+```
+
+You can use this in rails like so:
+
+```ruby
+
+	#routes.rb or any router lib
+	post 'sockets/auth'
+
+	# Auth method to authenticate private channels
+	#sockets_controller.rb or anywhere in your app
+
+	# client = Instance of Centrifuge initialized // check Usage section
+	# params[:channels] = single/array of channels
+	def auth
+	  if current_user
+	    data = {}
+	    sign = client.generate_channel_sign(
+	        params[:client], params[:channels], "{}"
+	    )
+	    data[channel] = {
+	        "sign": sign,
+	        "info": "{}"
+	    }
+	    render :json => data
+	  else
+	    render :text => "Not authorized", :status => '403'
+	  end
+	end
+```
+** On client side initialize Centrifuge like so: **
+
+``` javascript
+
+	// client_info = valid JSON string of user_info
+	// client_token = client.token_for (described above)
+
+	var centrifuge = new Centrifuge({
+	   url: "http://localhost:8000/connection",
+	   project: "project_name",
+	   user: window.currentUser.id,
+	   timestamp: window.currentUser.current_timestamp,
+	   debug: true,
+	   info: JSON.stringify(window.client_info),
+	   token: window.client_token,
+	   refreshEndpoint: "/sockets/refresh",
+	   authEndpoint: "/sockets/auth",
+	   authHeaders: {
+	      'X-Transaction': 'WebSocket Auth',
+	      'X-CSRF-Token': window.currentUser.form_authenticity_token
+	   },
+	   refreshHeaders: {
+	      'X-Transaction': 'WebSocket Auth',
+	      'X-CSRF-Token': window.currentUser.form_authenticity_token
+	   }
+	 });
+
+	centrifuge.connect();
+
+	* If you using **jbuiler** use raw render(template_name) and use a data-*/window vars attribute and load valid json from there
+```
+
+If you want to batch sign channels request, you can use JS client to batch channels ```centrifuge.startBatching();``` and on the server loop through channels and subscribe. You can read more here: [Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html)
+
 ## Rails assets
 
 To use Centrifuge js client just add this line to your application.js manifest:
