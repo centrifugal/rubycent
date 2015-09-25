@@ -92,7 +92,7 @@ Generates Sign token for a Channel:
 	client.generate_channel_sign(params[:client], params[:channels], "{}")
 ```
 
-Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is a list or a single channel. You can also add user info as valid json string as third parameter:
+Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is an array of channels or a single channel. You can read more here about batching channels: [Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html). You can also add user info as valid json string as third parameter:
 
 ```ruby
 	client.generate_channel_sign(params[:client], params[:channels], "{"name": "John"}")
