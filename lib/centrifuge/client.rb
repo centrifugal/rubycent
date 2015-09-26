@@ -68,7 +68,8 @@ module Centrifuge
     end
 
     def generate_channel_sign(client, channel, user_info="")
-      sign("#{client}#{channel}#{user_info}")
+      data = "#{client}#{channel}#{user_info}"
+      OpenSSL::HMAC.hexdigest(new_sha256, secret, data)
     end
 
     def generate_api_sign(encoded_data)
@@ -76,8 +77,8 @@ module Centrifuge
     end
 
     def sign(body)
-      dig = OpenSSL::Digest.new('sha256')
-      OpenSSL::HMAC.hexdigest(dig, secret, "#{project_key}#{body}")
+      data = "#{project_key}#{body}"
+      OpenSSL::HMAC.hexdigest(new_sha256, secret, data)
     end
 
     def client
@@ -90,5 +91,12 @@ module Centrifuge
         end
       end
     end
+
+    private
+
+    def new_sha256
+      OpenSSL::Digest::SHA256.new
+    end
+
   end
 end
