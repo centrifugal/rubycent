@@ -64,7 +64,7 @@ module Centrifuge
     end
 
     def token_for(user, timestamp, user_info = "")
-      sign("#{project_key}#{user}#{timestamp}#{user_info}")
+      sign("#{user}#{timestamp}#{user_info}")
     end
 
     def generate_channel_sign(client, channel, user_info="")
@@ -72,12 +72,12 @@ module Centrifuge
     end
 
     def generate_api_sign(encoded_data)
-      sign("#{project_key}#{encoded_data}")
+      sign("#{encoded_data}")
     end
 
     def sign(body)
       dig = OpenSSL::Digest.new('sha256')
-      OpenSSL::HMAC.hexdigest(dig, secret, body)
+      OpenSSL::HMAC.hexdigest(dig, secret, "#{project_key}#{body}")
     end
 
     def client
