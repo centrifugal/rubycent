@@ -72,10 +72,6 @@ module Centrifuge
       OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, data)
     end
 
-    def generate_api_sign(encoded_data)
-      sign("#{encoded_data}")
-    end
-
     def sign(body)
       data = "#{project_key}#{body}"
       OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, data)

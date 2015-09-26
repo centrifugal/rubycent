@@ -8,8 +8,8 @@ Ruby gem for [Centrifuge](https://github.com/centrifugal/centrifuge) real-time m
 
 Add this line to your application's Gemfile:
 
-```
-gem 'centrifuge'
+```ruby
+	gem 'centrifuge'
 ```
 
 And then execute:
@@ -26,15 +26,19 @@ Compatible version for Centrifuge version 0.8.0 and above are 0.1.0+. Please use
 
 `Centrifuge::Client` - is main usable class. Start with:
 
+```ruby
 	client = Centrifute::Client.new(scheme: :http, host: :localhost, port: 80, project_key: 'abc', secret: 'cde')
+```
 
 If you are planning to use only one project, its convenient to set all data and use class methods:
 
+```ruby
 	Centrifuge.scheme = :http
 	Centrifuge.host = 'localhost'
 	Centrifuge.port = 8000
 	Centrifuge.project_key = 'abc'
 	Centrifuge.secret = 'def'
+```
 
 There are five methds available:
 
@@ -42,17 +46,23 @@ There are five methds available:
 
 Sends message to all connected users:
 
+```ruby
 	client.publish('teshchannel', { data: :foo })
+```
 
 You can also use class methods if you set all necessary config data:
 
+```ruby
 	Centrifuge.publish('testchannel', { data: :foo })
+```
 
 ### Unsubscribe
 
 Unsubscribes user from channel:
 
+```ruby
 	client.unsubscribe('testchannel', 'user#23')
+```
 
 `user#23` - is string identificator of user.
 
@@ -60,45 +70,52 @@ Unsubscribes user from channel:
 
 Disconnects user from Centrifuge:
 
+```ruby
 	client.disconnect('user#23')
-
+```
 ### Presence
 
 Gets presence info of the channel:
 
+```ruby
 	client.presence('testchannel')
-
+```
 ### History
 
 Gets message history of the channel:
 
+```ruby
 	client.history('test_channel')
-
+```
 ### JS Client token generation
 
 Generates token for JS client:
 
+```ruby
 	client.token_for('testuser', '123123')
-
+```
 Where `123123` is UNIX timestamp. You can also add user info as valid json string as third parameter:
 
+```ruby
 	client.token_for('testuser', '123123', "{}")
-
+```
 ### Channel Sign token generation
 
 Generates Sign token for a Channel:
 
 ```ruby
-	client.generate_channel_sign(params[:client], params[:channels], "{}")
+client.generate_channel_sign(params[:client], params[:channels], "{}")
 ```
 
-Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` is an array of channels or a single channel. You can read more here about batching channels: [Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html). You can also add user info as valid json string as third parameter:
+Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` can be an array of channels or a single channel. You can read more here about batching channels here [JS Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html).
+
+You can also add user info as valid json string as third parameter:
 
 ```ruby
-	client.generate_channel_sign(params[:client], params[:channels], "{"name": "John"}")
+client.generate_channel_sign(params[:client], params[:channels], "{"name": "John"}")
 ```
 
-You can use this in rails like so:
+On server side using rails, you can authenticate private channels like so:
 
 ```ruby
 
@@ -155,10 +172,39 @@ On client side initialize Centrifuge like so:
 
 	centrifuge.connect();
 
-	// If you using jbuiler use raw render(template_name) and use a data-*/window vars attribute and load valid json from there
+	// If you using jbuiler use raw render(template_name) and use a global window object to load the user information.
 ```
 
-If you want to batch sign channels request, you can use JS client to batch channels ```centrifuge.startBatching();``` and on the server loop through channels and subscribe. You can read more here: [Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html)
+If you want to batch sign channels request to avoid multiple HTTP requests, you can use centrifuge JS client to batch channels ```centrifuge.startBatching(); // your code // centrifuge.stopBatching();``` in one request and on the server iterate through channels and subscribe.
+
+Read more: [JS client Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html)
+
+### API request sign
+
+When you use Centrifugo server API you should sign each request to successfully authorize with the server.
+
+```ruby
+
+	# For example this is how you would encode a Publish command
+	commands = {
+		"method": "publish",
+	  "params": {
+		  "channel": "Test",
+		  "data": { "name": "John Doe" }
+	  }
+	}
+
+	encoded_data = MultiJson.dump(commands) # Or use to_json
+	sign = client.sign(encoded_data) #Sign the data
+
+	# Using HTTP party GEM interact with Server API
+	r = HTTParty.post(client.url.to_s, query: {"sign": sign, "data": encoded_data})
+	r.parsed_response
+
+```
+
+```encoded_data``` is a JSON string with your API command/commands. See all available commands in [Server API](https://fzambia.gitbooks.io/centrifugal/content/server/api.html) chapter.
+
 
 ## Rails assets
 
