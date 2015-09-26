@@ -69,7 +69,7 @@ module Centrifuge
 
     def generate_channel_sign(client, channel, user_info="")
       data = "#{client}#{channel}#{user_info}"
-      OpenSSL::HMAC.hexdigest(new_sha256, secret, data)
+      OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, data)
     end
 
     def generate_api_sign(encoded_data)
@@ -78,7 +78,7 @@ module Centrifuge
 
     def sign(body)
       data = "#{project_key}#{body}"
-      OpenSSL::HMAC.hexdigest(new_sha256, secret, data)
+      OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, data)
     end
 
     def client
@@ -90,12 +90,6 @@ module Centrifuge
           http.keep_alive_timeout = @keep_alive_timeout
         end
       end
-    end
-
-    private
-
-    def new_sha256
-      OpenSSL::Digest::SHA256.new
     end
 
   end
