@@ -9,7 +9,7 @@ module Centrifuge
       host: 'localhost',
       port: 8000,
     }
-    attr_accessor :scheme, :host, :port, :project_key, :secret
+    attr_accessor :scheme, :host, :port, :secret
     attr_writer :connect_timeout, :send_timeout, :receive_timeout,
     :keep_alive_timeout
 
@@ -17,8 +17,8 @@ module Centrifuge
 
     def initialize(options = {})
       options = DEFAULT_OPTIONS.merge(options)
-      @scheme, @host, @port, @project_key, @secret = options.values_at(
-       :scheme, :host, :port, :project_key, :secret
+      @scheme, @host, @port, @secret = options.values_at(
+       :scheme, :host, :port, :secret
       )
       set_default_timeouts
     end
@@ -35,7 +35,7 @@ module Centrifuge
         scheme: scheme.to_s,
         host: host,
         port: port,
-        path: "/api/#{project_key}#{path}"
+        path: "/api/#{path}"
       })
     end
 
@@ -63,6 +63,10 @@ module Centrifuge
       Centrifuge::Builder.new('channels', {}, self).process
     end
 
+    def stats()
+      Centrifuge::Builder.new('stats', {}, self).process
+    end
+
     def token_for(user, timestamp, user_info = "")
       sign("#{user}#{timestamp}#{user_info}")
     end
@@ -73,8 +77,7 @@ module Centrifuge
     end
 
     def sign(body)
-      data = "#{project_key}#{body}"
-      OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, data)
+      OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, secret, body)
     end
 
     def client

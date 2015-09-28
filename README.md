@@ -20,27 +20,28 @@ Or install it yourself as:
 
     $ gem install centrifuge
 
-Compatible version for Centrifuge version 0.8.0 and above are 0.1.0+. Please use 0.0.x versions for older Centrifuge
+Compatible version: Centrifugo >= 0.4.0
+
+Older versions work with Centrifuge 0.8.0 and Centrifugo < 0.4.0
 
 ## Usage
 
 `Centrifuge::Client` - is main usable class. Start with:
 
 ```ruby
-	client = Centrifute::Client.new(scheme: :http, host: :localhost, port: 80, project_key: 'abc', secret: 'cde')
+	client = Centrifuge::Client.new(scheme: :http, host: :localhost, port: 80, secret: 'cde')
 ```
 
-If you are planning to use only one project, its convenient to set all data and use class methods:
+Or just:
 
 ```ruby
 	Centrifuge.scheme = :http
 	Centrifuge.host = 'localhost'
 	Centrifuge.port = 8000
-	Centrifuge.project_key = 'abc'
 	Centrifuge.secret = 'def'
 ```
 
-There are five methds available:
+There are six methods available:
 
 ### Publish
 
@@ -87,17 +88,26 @@ Gets message history of the channel:
 ```ruby
 	client.history('test_channel')
 ```
+
+### Channels
+
+Get active channels (with one or more subscribers):
+
+```ruby
+	client.channels()
+```
+
 ### JS Client token generation
 
 Generates token for JS client:
 
 ```ruby
-	client.token_for('testuser', '123123')
+	client.token_for('testuser', '1443422448')
 ```
-Where `123123` is UNIX timestamp. You can also add user info as valid json string as third parameter:
+Where `1443422448` is UNIX timestamp seconds. You can also add user info as valid json string as third parameter:
 
 ```ruby
-	client.token_for('testuser', '123123', "{}")
+	client.token_for('testuser', '1443422448', "{}")
 ```
 ### Channel Sign token generation
 
@@ -152,7 +162,6 @@ On client side initialize Centrifuge like so:
 
 	var centrifuge = new Centrifuge({
 	   url: "http://localhost:8000/connection",
-	   project: "project_name",
 	   user: window.currentUser.id,
 	   timestamp: window.currentUser.current_timestamp,
 	   debug: true,
@@ -188,10 +197,10 @@ When you use Centrifugo server API you should sign each request to successfully 
 	# For example this is how you would encode a Publish command
 	commands = {
 		"method": "publish",
-	  "params": {
-		  "channel": "Test",
-		  "data": { "name": "John Doe" }
-	  }
+	  	"params": {
+			"channel": "Test",
+		  	"data": { "name": "John Doe" }
+	  	}
 	}
 
 	encoded_data = MultiJson.dump(commands) # Or use to_json
