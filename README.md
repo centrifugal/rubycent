@@ -20,9 +20,10 @@ Or install it yourself as:
 
     $ gem install centrifuge
 
-Compatible version: Centrifugo >= 0.4.0
+## Compatibility
 
-Older versions work with Centrifuge 0.8.0 and Centrifugo < 0.4.0
+Centrifuge-ruby 1.0.0+ supports only Centrifuge version 1.0.0+ with single project only.
+If you want to use multiproject Centrifuge, please use centrifuge-ruby 0.1.0
 
 ## Usage
 
