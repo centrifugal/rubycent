@@ -39,6 +39,10 @@ module Centrifuge
       })
     end
 
+    def broadcast(channels, data)
+      Centrifuge::Builder.new('broadcast', { channels: channels, data: data }, self).process
+    end
+
     def publish(channel, data)
       Centrifuge::Builder.new('publish', { channel: channel, data: data }, self).process
     end

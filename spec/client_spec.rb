@@ -1,17 +1,23 @@
 require 'spec_helper'
 
 describe Centrifuge::Client do
-  let(:options) { { scheme: :https, host: 'centrifugo-dev.herokuapp.com', port: 443, secret: 'secret' } }
+  let(:options) { { scheme: :https, host: 'centrifugo.herokuapp.com', port: 443, secret: 'secret' } }
   let(:client) { Centrifuge::Client.new(options) }
   let(:data) { { action: :test } }
 
   it 'generates url' do
-    expect(client.url.to_s).to eq "https://centrifugo-dev.herokuapp.com:443/api/"
+    expect(client.url.to_s).to eq "https://centrifugo.herokuapp.com:443/api/"
   end
 
   it 'publishes data' do
     channel = SecureRandom.hex
     expect(client.publish(channel, data)).to eq [{"body" => nil, "error" => nil, "method" => "publish"}]
+  end
+
+  it 'broadcasts data' do
+    channel = SecureRandom.hex
+    channel1 = SecureRandom.hex
+    expect(client.broadcast([channel, channel1], data)).to eq [{"body" => nil, "error" => nil, "method" => "broadcast"}]
   end
 
   it 'unsubscribes user' do
