@@ -1,0 +1,40 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://centrifugo.herokuapp.com/api/
+    body:
+      encoding: UTF-8
+      string: data=%7B%22method%22%3A%22broadcast%22%2C%22params%22%3A%7B%22channels%22%3A%5B%22test_channel%22%2C%22test_channel_1%22%5D%2C%22data%22%3A%7B%22action%22%3A%22test%22%7D%7D%7D&sign=249cbaaa695d6d18a9e781e3fd9ca7e65f38780383a17a8f921d53d6016c631a
+    headers:
+      User-Agent:
+      - HTTPClient/1.0 (2.8.0, ruby 2.2.2 (2015-04-13))
+      Accept:
+      - "*/*"
+      Date:
+      - Tue, 26 Apr 2016 21:28:15 GMT
+      Content-Type:
+      - application/x-www-form-urlencoded
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Server:
+      - Cowboy
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 26 Apr 2016 21:28:16 GMT
+      Content-Length:
+      - '49'
+      Via:
+      - 1.1 vegur
+    body:
+      encoding: UTF-8
+      string: '[{"body":null,"error":null,"method":"broadcast"}]'
+    http_version: 
+  recorded_at: Tue, 26 Apr 2016 21:28:16 GMT
+recorded_with: VCR 3.0.1
