@@ -2,7 +2,7 @@
 [![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
 [![Build Status](https://travis-ci.org/centrifugal/rubycent.svg)](https://travis-ci.org/centrifugal/rubycent)
 
-Ruby gem for [Centrifuge](https://github.com/centrifugal/centrifuge) real-time messaging broker
+Ruby gem for [Centrifugo](https://github.com/centrifugal/centrifugo) real-time messaging server
 
 ## Installation
 
@@ -22,8 +22,8 @@ Or install it yourself as:
 
 ## Compatibility
 
-Centrifuge-ruby 1.0.0+ supports only Centrifuge version 1.0.0+ with single project only.
-If you want to use multiproject Centrifuge, please use centrifuge-ruby 0.1.0
+Rubycent 1.0.0+ supports only Centrifugo version 1.0.0+ with single project only.
+If you want to use multiproject Centrifugo, please use rubycent 0.1.0
 
 ## Usage
 
@@ -70,7 +70,7 @@ Unsubscribes user from channel:
 
 ### Disconnect
 
-Disconnects user from Centrifuge:
+Disconnects user from Centrifugo:
 
 ```ruby
 	client.disconnect('user#23')
@@ -154,7 +154,7 @@ On server side using rails, you can authenticate private channels like so:
 	  end
 	end
 ```
-On client side initialize Centrifuge like so:
+On client side initialize Centrifuge object like so:
 
 ``` javascript
 
@@ -233,7 +233,7 @@ Other API methods, like projects and channels management are unavailable now.
 
 ## Contributing
 
-1. Fork it ( https://github.com/centrifugal/centrifuge-ruby/fork )
+1. Fork it ( https://github.com/centrifugal/rubycent/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
