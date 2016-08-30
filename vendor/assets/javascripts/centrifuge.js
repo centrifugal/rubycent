@@ -1658,7 +1658,7 @@ function errorExists(data) {
 }
 
 function Centrifuge(options) {
-    this._sockjs = false;
+    this._useSockJS = false;
     this._status = 'disconnected';
     this._reconnect = true;
     this._reconnecting = false;
@@ -1672,12 +1672,14 @@ function Centrifuge(options) {
     this._isBatching = false;
     this._isAuthBatching = false;
     this._authChannels = {};
+    this._numRefreshFailed = 0;
     this._refreshTimeout = null;
     this._retries = 0;
     this._callbacks = {};
     this._latency = null;
     this._latencyStart = null;
     this._config = {
+        sockJS: null,
         retry: 1000,
         maxRetry: 20000,
         timeout: 5000,
@@ -1702,7 +1704,10 @@ function Centrifuge(options) {
         refreshEndpoint: "/centrifuge/refresh/",
         refreshHeaders: {},
         refreshParams: {},
+        refreshData: {},
         refreshTransport: "ajax",
+        refreshAttempts: null,
+        refreshFailed: null,
         authEndpoint: "/centrifuge/auth/",
         authHeaders: {},
         authParams: {},
@@ -1860,25 +1865,37 @@ centrifugeProto._configure = function (configuration) {
 
     if (endsWith(this._config.url, 'connection')) {
         this._debug("client will connect to SockJS endpoint");
-        if (typeof SockJS === 'undefined') {
+        if (this._config.sockJS !== null) {
+            this._debug("SockJS explicitly provided in options");
+            this._useSockJS = true;
+        } else if (typeof SockJS === 'undefined') {
             throw 'include SockJS client library before Centrifuge javascript client library or use raw Websocket connection endpoint';
+        } else {
+            this._debug("use globally defined SockJS");
+            this._config.sockJS = SockJS;
+            this._useSockJS = true;
         }
-        this._sockjs = true;
     } else if (endsWith(this._config.url, 'connection/websocket')) {
         this._debug("client will connect to raw Websocket endpoint");
         this._config.url = this._config.url.replace("http://", "ws://");
         this._config.url = this._config.url.replace("https://", "wss://");
     } else {
         this._debug("client will detect connection endpoint itself");
-        if (typeof SockJS === 'undefined') {
+        if (this._config.sockJS === null && typeof SockJS === 'undefined') {
             this._debug("no SockJS found, client will connect to raw Websocket endpoint");
             this._config.url += "/connection/websocket";
             this._config.url = this._config.url.replace("http://", "ws://");
             this._config.url = this._config.url.replace("https://", "wss://");
         } else {
             this._debug("SockJS found, client will connect to SockJS endpoint");
+            if (this._config.sockJS !== null) {
+                this._debug("SockJS explicitly provided in options");
+            } else {
+                this._debug("use globally defined SockJS");
+                this._config.sockJS = SockJS;
+            }
             this._config.url += "/connection";
-            this._sockjs = true;
+            this._useSockJS = true;
         }
     }
 };
@@ -1965,6 +1982,13 @@ centrifugeProto._connect = function (callback) {
         return;
     }
 
+    if (this._numRefreshFailed > 0) {
+        this._debug("can't connect when credentials expired, need to refresh");
+        return;
+    }
+
+    this._debug("start connecting");
+
     this._setStatus('connecting');
     this._clientID = null;
     this._reconnect = true;
@@ -1976,14 +2000,14 @@ centrifugeProto._connect = function (callback) {
     }
 
     // detect transport to use - SockJS or raw Websocket
-    if (this._sockjs === true) {
+    if (this._useSockJS === true) {
         var sockjsOptions = {
             "transports": this._config.transports
         };
         if (this._config.server !== null) {
             sockjsOptions['server'] = this._config.server;
         }
-        this._transport = new SockJS(this._config.url, null, sockjsOptions);
+        this._transport = new this._config.sockJS(this._config.url, null, sockjsOptions);
     } else {
         this._transport = new WebSocket(this._config.url);
     }
@@ -1992,7 +2016,7 @@ centrifugeProto._connect = function (callback) {
 
         self._reconnecting = false;
 
-        if (self._sockjs) {
+        if (self._useSockJS) {
             self._transportName = self._transport._transport.transportName;
         } else {
             self._transportName = "raw-websocket";
@@ -2087,28 +2111,51 @@ centrifugeProto._disconnect = function (reason, shouldReconnect, closeTransport)
     }
 };
 
+centrifugeProto._refreshFailed = function() {
+    if (!this.isDisconnected()) {
+        this._disconnect("refresh failed", false, true);
+    }
+    if (this._config.refreshFailed !== null) {
+        this._config.refreshFailed();
+    }
+};
+
 centrifugeProto._refresh = function () {
     // ask web app for connection parameters - user ID,
     // timestamp, info and token
     var self = this;
     this._debug('refresh credentials');
 
+    if (self._config.refreshAttempts === 0) {
+        this._debug('refresh attempts set to 0, do not send refresh request at all');
+        self._refreshFailed();
+        return;
+    }
+
     var cb = function(error, data) {
         if (error === true) {
             // 403 or 500 - does not matter - if connection check activated then Centrifugo
             // will disconnect client eventually
             self._debug("error getting connect parameters", data);
+            self._numRefreshFailed++;
             if (self._refreshTimeout) {
                 clearTimeout(self._refreshTimeout);
             }
+            if (self._config.refreshAttempts !== null && self._numRefreshFailed >= self._config.refreshAttempts) {
+                self._refreshFailed();
+                return;
+            }
             self._refreshTimeout = setTimeout(function(){
                 self._refresh.call(self);
-            }, 3000);
+            }, 3000 + Math.round(Math.random() * 1000));
             return;
         }
+        self._numRefreshFailed = 0;
         self._config.user = data.user;
         self._config.timestamp = data.timestamp;
-        self._config.info = data.info;
+        if ("info" in data) {
+            self._config.info = data.info;
+        }
         self._config.token = data.token;
         if (self.isDisconnected()) {
             self._debug("credentials refreshed, connect from scratch");
@@ -2130,9 +2177,9 @@ centrifugeProto._refresh = function () {
 
     var transport = this._config.refreshTransport.toLowerCase();
     if (transport === "ajax") {
-        this._ajax(this._config.refreshEndpoint, this._config.refreshParams, this._config.refreshHeaders, {}, cb);
+        this._ajax(this._config.refreshEndpoint, this._config.refreshParams, this._config.refreshHeaders, this._config.refreshData, cb);
     } else if (transport === "jsonp") {
-        this._jsonp(this._config.refreshEndpoint, this._config.refreshParams, this._config.refreshHeaders, {}, cb);
+        this._jsonp(this._config.refreshEndpoint, this._config.refreshParams, this._config.refreshHeaders, this._config.refreshData, cb);
     } else {
         throw 'Unknown refresh transport ' + transport;
     }
@@ -3035,8 +3082,6 @@ subProto.history = function() {
 };
 
 module.exports = Centrifuge;
-
-
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"es6-promise":2,"wolfy87-eventemitter":3}]},{},[4])(4)
