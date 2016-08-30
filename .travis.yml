@@ -3,7 +3,16 @@ language: ruby
 notifications:
   email: false
 rvm:
-  - 1.9.3
-  - 2.0.0
-  - 2.1
-  - 2.2
+- 1.9.3
+- 2.0.0
+- 2.1
+- 2.2
+- 2.3
+deploy:
+  provider: rubygems
+  api_key:
+    secure: Dl1QO8iSCUBl0444li1DKZ1elnXqMeG+7YUJq37NDXsTEu7O5aXdOVSmW5Ky5WJV4gkuhzAVON6DXk9vLc8qQcMWkVP5ppx3rbO49O2k77L7j1zmOY/f1LkFH7NJyMqaYesWFpWHDFpd4HeFYprxJ18NlfJSfpxMKOnIp/pK3bQ=
+  gem: centrifuge
+  on:
+    tags: true
+    repo: centrifugal/rubycent
