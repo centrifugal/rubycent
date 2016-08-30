@@ -8,9 +8,8 @@ Ruby gem for [Centrifugo](https://github.com/centrifugal/centrifugo) real-time m
 
 Add this line to your application's Gemfile:
 
-```ruby
-	gem 'centrifuge'
-```
+    gem 'centrifuge'
+
 
 And then execute:
 
@@ -19,6 +18,14 @@ And then execute:
 Or install it yourself as:
 
     $ gem install centrifuge
+
+## Releases
+
+Travis CI configured to automatically release tagged commits to rubygems.
+
+Before tagging, please increment version in `lib/centriguge/version.rb` and use git tag like `v1.1.1`.
+
+Dont forget to `git push --tags`.
 
 ## Compatibility
 
