@@ -50,3 +50,26 @@ describe Centrifuge::Client do
     it { expect(result).to eq 'be26ac57ef264c23662ba373e4b68670c1a006431c763af6d33ad10ab6aa97d9' }
   end
 end
+
+describe Centrifuge do
+  context 'delegation' do
+    it 'class should delegate methods to default client' do
+      client_double = double('default_client')
+      methods_to_delegate = [:scheme, :host, :port, :secret,
+        :scheme=, :host=, :port=, :secret=,
+        :connect_timeout=, :send_timeout=, :receive_timeout=, :keep_alive_timeout=,
+        :broadcast, :publish, :unsubscribe, :disconnect, :presence, :history,
+        :channels, :stats, :token_for, :generate_channel_sign]
+
+      methods_to_delegate.each do |method|
+        expect(client_double).to receive(method)
+      end
+
+      Centrifuge.stub(:default_client).and_return(client_double)
+
+      methods_to_delegate.each do |method|
+        Centrifuge.send(method)
+      end
+    end
+  end
+end
