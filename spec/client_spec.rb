@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'securerandom'
 
 describe Centrifuge::Client do
   let(:options) { { scheme: :https, host: 'centrifugo.herokuapp.com', port: 443, secret: 'secret' } }
