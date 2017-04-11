@@ -18,14 +18,9 @@ module Centrifuge
 
     def_delegators :default_client, :scheme, :host, :port, :secret
     def_delegators :default_client, :scheme=, :host=, :port=, :secret=
-
-    # def_delegators :default_client, :authentication_token, :url
-    # def_delegators :default_client, :encrypted=, :url=
-    def_delegators :default_client, :timeout=, :connect_timeout=, :send_timeout=, :receive_timeout=, :keep_alive_timeout=
-
-    # def_delegators :default_client, :get, :get_async, :post, :post_async
-    def_delegators :default_client, :publish
-    # def_delegators :default_client, :webhook, :channel, :[]
+    def_delegators :default_client, :connect_timeout=, :send_timeout=, :receive_timeout=, :keep_alive_timeout=
+    def_delegators :default_client, :broadcast, :publish, :unsubscribe, :disconnect, :presence, :history, :channels, :stats
+    def_delegators :default_client, :token_for, :generate_channel_sign
 
     attr_writer :logger
 
