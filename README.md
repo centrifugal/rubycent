@@ -1,15 +1,16 @@
-# Centrifuge
+# Cent
 [![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
 [![Build Status](https://travis-ci.org/centrifugal/rubycent.svg)](https://travis-ci.org/centrifugal/rubycent)
 
-Ruby gem for [Centrifugo](https://github.com/centrifugal/centrifugo) real-time messaging server
+[Centrifugo HTTP API v2](https://centrifugal.github.io/centrifugo/server/http_api/) client in Ruby.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'centrifuge'
-
+```ruby
+gem 'cent' 
+```
 
 And then execute:
 
@@ -17,231 +18,249 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install centrifuge
-
-## Releases
-
-Travis CI configured to automatically release tagged commits to rubygems.
-
-Before tagging, please increment version in `lib/centriguge/version.rb` and use git tag like `v1.1.1`.
-
-Dont forget to `git push --tags`.
-
-## Compatibility
-
-Rubycent 1.0.0+ supports only Centrifugo version 1.0.0+ with single project only.
-If you want to use multiproject Centrifugo, please use rubycent 0.1.0
+    $ gem install cent
 
 ## Usage
 
-`Centrifuge::Client` - is main usable class. Start with:
+Functionality is split between two classes:
+ - `Cent::Client` to call API methods
+ - `Cent::Notary` to generate tokens
+
+### Token Generation
 
 ```ruby
-	client = Centrifuge::Client.new(scheme: :http, host: :localhost, port: 80, secret: 'cde')
+notary = Cent::Notary.new(secret: 'secret')
 ```
 
-Or just:
+#### Connection token
+
+When connecting to Centrifugo client [must provide connection JWT token](https://centrifugal.github.io/centrifugo/server/authentication/) with several predefined credential claims.
 
 ```ruby
-	Centrifuge.scheme = :http
-	Centrifuge.host = 'localhost'
-	Centrifuge.port = 8000
-	Centrifuge.secret = 'def'
+notary.issue_connection_token(sub: '42') 
+
+#=> "eyJhbGciOiJIUzI1NiJ9..."
 ```
 
-There are six methods available:
-
-### Publish
-
-Sends message to all connected users:
+`info` and `exp` are supported as well: 
 
 ```ruby
-	client.publish('teshchannel', { data: :foo })
+notary.issue_connection_token(sub: '42', info: { scope: 'admin' }, exp: 1629050099) 
+
+#=> "eyJhbGciOiJIUzI1NiJ9..."
 ```
 
-You can also use class methods if you set all necessary config data:
+### Private channel token
+
+All channels starting with $ considered private and require a **channel token** to subscribe. 
+Private channel subscription token is also JWT([see the claims](https://centrifugal.github.io/centrifugo/server/private_channels/))
 
 ```ruby
-	Centrifuge.publish('testchannel', { data: :foo })
+notary.issue_channel_token(client: 'client', channel: 'channel', exp: 1629050099, info: { scope: 'admin' }) 
+
+#=> "eyJhbGciOiJIUzI1NiJ9..."
 ```
+ 
+### API Client
 
-### Unsubscribe
-
-Unsubscribes user from channel:
+A client requires your Centrifugo API key to execute all requests.
 
 ```ruby
-	client.unsubscribe('testchannel', 'user#23')
+client = Cent::Client.new(api_key: 'key')
 ```
 
-`user#23` - is string identificator of user.
-
-### Disconnect
-
-Disconnects user from Centrifugo:
+you can customize your connection as you wish, just remember it's a [Faraday::Connection](https://lostisland.github.io/faraday/usage/#customizing-faradayconnection) instance:
 
 ```ruby
-	client.disconnect('user#23')
+client = Cent::Client.new(api_key: 'key', endpoint: 'https://centrifu.go/api') do |connection|
+  connection.headers['User-Agent'] = 'Centrifugo Ruby Client'
+  connection.options.open_timeout = 3
+  connection.options.timeout = 7
+  connection.adapter :typhoeus
+end
 ```
-### Presence
 
-Gets presence info of the channel:
+#### Publish
+
+Send data to the channel.
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#publish](https://centrifugal.github.io/centrifugo/server/http_api/#publish)
 
 ```ruby
-	client.presence('testchannel')
+client.publish(channel: 'chat', data: 'hello') # => {}
 ```
-### History
 
-Gets message history of the channel:
+#### Broadcast
+
+Sends data to multiple channels.
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#broadcast](https://centrifugal.github.io/centrifugo/server/http_api/#broadcast)
 
 ```ruby
-	client.history('test_channel')
+client.broadcast(channels: ["clients", "staff"], data: 'hello') # => {}
 ```
 
-### Channels
+#### Unsubscribe
 
-Get active channels (with one or more subscribers):
+Unsubscribe user from channel. Receives to arguments: channel and user (user ID you want to unsubscribe)
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#unsubscribe](https://centrifugal.github.io/centrifugo/server/http_api/#unsubscribe)
 
 ```ruby
-	client.channels()
+client.unsubscribe(channel: 'chat', user: '1') # => {}
 ```
 
-### JS Client token generation
+#### Disconnect
 
-Generates token for JS client:
+Allows to disconnect user by it's ID. Receives user ID as an argument.
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#disconnect](https://centrifugal.github.io/centrifugo/server/http_api/#disconnect)
 
 ```ruby
-	client.token_for('testuser', '1443422448')
+# Disconnect user with `id = 1`
+# 
+client.disconnect(user: '1') # => {}
 ```
-Where `1443422448` is UNIX timestamp seconds. You can also add user info as valid json string as third parameter:
+
+#### Presence
+
+Get channel presence information(all clients currently subscribed on this channel).
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#presence](https://centrifugal.github.io/centrifugo/server/http_api/#presence)
 
 ```ruby
-	client.token_for('testuser', '1443422448', "{}")
-```
-### Channel Sign token generation
+client.presence(channel: 'chat') 
 
-Generates Sign token for a Channel:
+# {
+#   'result' => {
+#     'presence' => {
+#       'c54313b2-0442-499a-a70c-051f8588020f' => {
+#         'client' => 'c54313b2-0442-499a-a70c-051f8588020f',
+#         'user' => '42'
+#       },
+#       'adad13b1-0442-499a-a70c-051f858802da' => {
+#         'client' => 'adad13b1-0442-499a-a70c-051f858802da',
+#         'user' => '42'
+#       }
+#     }
+#   }
+# }
+``` 
 
-```ruby
-client.generate_channel_sign(params[:client], params[:channels], "{}")
-```
+#### Presence stats
 
-Where ```params[:client]``` is client passed during authentication and ```params[:channels]``` can be an array of channels or a single channel. You can read more here about batching channels here [JS Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html).
+Get short channel presence information.
 
-You can also add user info as valid json string as third parameter:
-
-```ruby
-client.generate_channel_sign(params[:client], params[:channels], "{"name": "John"}")
-```
-
-On server side using rails, you can authenticate private channels like so:
-
-```ruby
-
-	#routes.rb or any router lib
-	post 'sockets/auth'
-
-	# Auth method to authenticate private channels
-	#sockets_controller.rb or anywhere in your app
-
-	# client = Instance of Centrifuge initialized // check Usage section
-	# params[:channels] = single/array of channels
-	def auth
-	  if user_signed_in? # Or use a before_filter
-	    data = {}
-	    sign = client.generate_channel_sign(
-	        params[:client], params[:channels], "{}"
-	    )
-	    data[channel] = {
-	        "sign": sign,
-	        "info": "{}"
-	    }
-	    render :json => data
-	  else
-	    render :text => "Not authorized", :status => '403'
-	  end
-	end
-```
-On client side initialize Centrifuge object like so:
-
-``` javascript
-
-	// client_info = valid JSON string of user_info
-	// client_token = client.token_for (described above)
-
-	var centrifuge = new Centrifuge({
-	   url: "http://localhost:8000/connection",
-	   user: window.currentUser.id,
-	   timestamp: window.currentUser.current_timestamp,
-	   debug: true,
-	   info: JSON.stringify(window.client_info),
-	   token: window.client_token,
-	   refreshEndpoint: "/sockets/refresh",
-	   authEndpoint: "/sockets/auth",
-	   authHeaders: {
-	      'X-Transaction': 'WebSocket Auth',
-	      'X-CSRF-Token': window.currentUser.form_authenticity_token
-	   },
-	   refreshHeaders: {
-	      'X-Transaction': 'WebSocket Auth',
-	      'X-CSRF-Token': window.currentUser.form_authenticity_token
-	   }
-	 });
-
-	centrifuge.connect();
-
-	// If you using jbuiler use raw render(template_name) and use a global window object to load the user information.
-```
-
-If you want to batch sign channels request to avoid multiple HTTP requests, you can use centrifuge JS client to batch channels ```centrifuge.startBatching(); // your code // centrifuge.stopBatching();``` in one request and on the server iterate through channels and subscribe.
-
-Read more: [JS client Documentation](https://fzambia.gitbooks.io/centrifugal/content/client/api.html)
-
-### API request sign
-
-When you use Centrifugo server API you should sign each request to successfully authorize with the server.
+[https://centrifugal.github.io/centrifugo/server/http_api/#presence_stats](https://centrifugal.github.io/centrifugo/server/http_api/#precence_stats)
 
 ```ruby
+client.presence_stats(channel: 'chat')
 
-	# For example this is how you would encode a Publish command
-	commands = {
-		"method": "publish",
-	  	"params": {
-			"channel": "Test",
-		  	"data": { "name": "John Doe" }
-	  	}
-	}
-
-	encoded_data = MultiJson.dump(commands) # Or use to_json
-	sign = client.sign(encoded_data) #Sign the data
-
-	# Using HTTP party GEM interact with Server API
-	r = HTTParty.post(client.url.to_s, query: {"sign": sign, "data": encoded_data})
-	r.parsed_response
-
+# {
+#   "result" => {
+#     "num_clients" => 0,
+#     "num_users" => 0
+#   }
+# }
 ```
 
-```encoded_data``` is a JSON string with your API command/commands. See all available commands in [Server API](https://fzambia.gitbooks.io/centrifugal/content/server/api.html) chapter.
+#### History
 
+Get channel history information (list of last messages published into channel).
 
-## Rails assets
+[https://centrifugal.github.io/centrifugo/server/http_api/#history](https://centrifugal.github.io/centrifugo/server/http_api/#hisotry)
 
-To use Centrifuge js client just add this line to your application.js manifest:
+```ruby
+client.history(channel: 'chat') 
 
-	//= require centrifuge
+# {
+#   'result' => {
+#     'publications' => [
+#       {
+#         'data' => {
+#           'text' => 'hello'
+#         }
+#       },
+#       {
+#         'data' => {
+#           'text' => 'hi!'
+#         }
+#       }
+#     ]
+#   }
+# }
+```
 
-If you want to use sockjs require it before centrifuge:
+#### Channels
 
-	//= require sockjs
-	//= require centrifuge
+Get list of active(with one or more subscribers) channels.
 
-### Other API
+[https://centrifugal.github.io/centrifugo/server/http_api/#channels](https://centrifugal.github.io/centrifugo/server/http_api/#channels)
 
-Other API methods, like projects and channels management are unavailable now.
+```ruby
+client.channels
+
+# {
+#   'result' => {
+#     'channels' => [
+#       'chat'
+#     ]
+#   }
+# }
+```
+
+#### Info
+
+Get running Centrifugo nodes information.
+
+[https://centrifugal.github.io/centrifugo/server/http_api/#info](https://centrifugal.github.io/centrifugo/server/http_api/#info)
+
+```ruby
+client.info
+
+# {
+#   'result' => {
+#     'nodes' => [
+#       {
+#         'name' => 'Alexanders-MacBook-Pro.local_8000',
+#         'num_channels' => 0,
+#         'num_clients' => 0,
+#         'num_users' => 0,
+#         'uid' => 'f844a2ed-5edf-4815-b83c-271974003db9',
+#         'uptime' => 0,
+#         'version' => ''
+#       }
+#     ]
+#   }
+# }
+```
+
+### Errors
+
+Network errors are not wrapped and will raise `Faraday::ClientError`.
+
+In cases when Centrifugo returns 200 with `error` key in the body we wrap it and return custom error:
+
+```ruby
+# Raised when response from Centrifugo contains any error as result of API command execution.
+#
+begin
+  client.publish(channel: 'channel', data: { foo: :bar })
+rescue Cent::ResponseError => ex
+  ex.message # => "Invalid format"
+end
+```
+
+## Development
+
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+
+To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 
-1. Fork it ( https://github.com/centrifugal/rubycent/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+Bug reports and pull requests are welcome on GitHub at https://github.com/centrifugal/rubycent. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

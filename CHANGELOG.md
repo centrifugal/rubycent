@@ -1,3 +1,8 @@
+2.0.0
+=====
+
+* Complete rewrite of a Ruby Client to work with Centrifugo V2 Server API
+
 1.2.0
 =====
 
