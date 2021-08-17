@@ -32,6 +32,22 @@ Functionality is split between two classes:
 notary = Cent::Notary.new(secret: 'secret')
 ```
 
+By default it uses HS256 to generate tokens, but you can set it to one of the HMAC, RSA or ECDSA family. 
+
+#### RSA
+
+```ruby
+secret = OpenSSL::PKey::RSA.new(File.read('./rsa_secret.pem'))
+notary = Cent::Notary.new(secret: secret, algorithm: 'RS256')
+```
+
+#### ECDSA
+
+```ruby
+secret = OpenSSL::PKey::EC.new(File.read('./ecdsa_secret.pem'))
+notary = Cent::Notary.new(secret: secret, algorithm: 'ES256')
+```
+
 #### Connection token
 
 When connecting to Centrifugo client [must provide connection JWT token](https://centrifugal.github.io/centrifugo/server/authentication/) with several predefined credential claims.

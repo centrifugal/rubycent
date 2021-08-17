@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'jwt'
+require 'cent/error'
 
 module Cent
   # Cent::Notary
@@ -8,18 +9,17 @@ module Cent
   #   Handle token generation
   #
   class Notary
-    # @param secret [String]
+    # @param secret [String | OpenSSL::PKey::RSA | OpenSSL::PKey::EC] Secret key for the algorithm of your choice.
+    # @param algorithm [String] Specify algorithm(one from HMAC, RSA or ECDSA family). Default is HS256.
     #
     # @example Construct new client instance
     #   notary = Cent::Notary.new(secret: 'secret')
     #
-    # @note At moment the only supported JWT algorithm is HS256 - i.e. HMAC SHA-256.
-    #   This can be extended later.
-    def initialize(secret:)
+    def initialize(secret:, algorithm: 'HS256')
       raise Error, 'Secret can not be nil' if secret.nil?
 
       @secret = secret
-      @algorithm = 'HS256'
+      @algorithm = algorithm
     end
 
     # Generate connection JWT for the given user
@@ -45,7 +45,7 @@ module Cent
     #
     # @return [String]
     #
-    def issue_connection_token(sub:, info: {}, exp: nil)
+    def issue_connection_token(sub:, info: nil, exp: nil)
       payload = {
         'sub' => sub,
         'info' => info,
@@ -78,7 +78,7 @@ module Cent
     #
     # @return [String]
     #
-    def issue_channel_token(client:, channel:, info: {}, exp: nil)
+    def issue_channel_token(client:, channel:, info: nil, exp: nil)
       payload = {
         'client' => client,
         'channel' => channel,
