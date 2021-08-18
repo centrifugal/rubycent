@@ -13,4 +13,8 @@
 *.a
 mkmf.log
 .ruby-gemset
-.ruby-version
+.ruby-versions
+*.iml
+.idea/
+.rspec_status
+
