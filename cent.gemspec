@@ -9,7 +9,12 @@ Gem::Specification.new do |spec|
   spec.email         = ['prikha@gmail.com']
 
   spec.summary       = 'Centrifugo API V2 Ruby Client'
-  spec.description   = 'Centrifugo API V2 Ruby Client'
+  spec.description   = <<~DESC
+    Provides helper classes Cent::Client and Cent::Notary.
+
+    `Cent::Client` is made to communicate to the server API
+    `Client::Notary` is a simple JWT wrapper to generate authorization tokens for the frontend
+  DESC
   spec.homepage      = 'https://github.com/centrifugal/rubycent'
   spec.license       = 'MIT'
   spec.required_ruby_version = Gem::Requirement.new('>= 2.5.0')
@@ -25,12 +30,7 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'faraday', '>= 0.17.3'
-  spec.add_dependency 'faraday_middleware'
+  spec.add_dependency 'faraday', '<2.0.0', '~> 1.7.0'
+  spec.add_dependency 'faraday_middleware', '<2.0.0', '~> 1.0'
   spec.add_dependency 'jwt', '~> 2.2.1'
-
-  spec.add_development_dependency 'bundler'
-  spec.add_development_dependency 'rake', '>= 12.3.3'
-  spec.add_development_dependency 'rspec', '~> 3.0'
-  spec.add_development_dependency 'webmock', '~> 3.7.5'
 end
