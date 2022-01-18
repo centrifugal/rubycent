@@ -9,3 +9,5 @@ RSpec/ExampleLength:
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
+Gemspec/RequireMFA:
+  Enabled: false
