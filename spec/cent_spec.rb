@@ -2,7 +2,7 @@
 
 RSpec.describe Cent do
   it 'has a version number' do
-    expect(Cent::VERSION).not_to be nil
+    expect(Cent::VERSION).not_to be_nil
   end
 
   describe 'Cent::Client' do
