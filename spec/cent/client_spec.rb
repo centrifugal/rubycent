@@ -8,12 +8,14 @@ RSpec.describe Cent::Client do
   let(:client) { described_class.new(api_key: 'api_key') }
 
   before do
+    request_headers = {
+      'Content-Type' => 'application/json',
+      'Authorization' => 'apikey api_key'
+    }
+    response_headers = { 'Content-Type' => 'application/json' }
     stub_request(:post, 'http://localhost:8000/api')
-      .with(body: params, headers: {
-              'Content-Type' => 'application/json',
-              'Authorization' => 'apikey api_key'
-            })
-      .to_return(status: 200, body: expected_body)
+      .with(body: params, headers: request_headers)
+      .to_return(status: 200, body: expected_body, headers: response_headers)
   end
 
   describe 'error handling' do
