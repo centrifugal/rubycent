@@ -1,3 +1,8 @@
+2.1.0
+=====
+
+* Increase Faraday dependency's maximum version to 3.0.0 [#19](https://github.com/centrifugal/rubycent/pull/19)
+
 2.0.2
 =====
 
