@@ -2,7 +2,7 @@
 [![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
 ![Build Status](https://github.com/centrifugal/rubycent/actions/workflows/main.yml/badge.svg)
 
-[Centrifugo HTTP API v2](https://centrifugal.github.io/centrifugo/server/http_api/) client in Ruby.
+[Centrifugo HTTP API](https://centrifugal.dev/docs/server/server_api) client in Ruby.
 
 ## Installation
 
@@ -100,7 +100,7 @@ end
 
 Send data to the channel.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#publish](https://centrifugal.github.io/centrifugo/server/http_api/#publish)
+[publish](https://centrifugal.dev/docs/server/server_api#publish)
 
 ```ruby
 client.publish(channel: 'chat', data: 'hello') # => {}
@@ -110,7 +110,7 @@ client.publish(channel: 'chat', data: 'hello') # => {}
 
 Sends data to multiple channels.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#broadcast](https://centrifugal.github.io/centrifugo/server/http_api/#broadcast)
+[broadcast](https://centrifugal.dev/docs/server/server_api#broadcast)
 
 ```ruby
 client.broadcast(channels: ["clients", "staff"], data: 'hello') # => {}
@@ -120,7 +120,7 @@ client.broadcast(channels: ["clients", "staff"], data: 'hello') # => {}
 
 Unsubscribe user from channel. Receives to arguments: channel and user (user ID you want to unsubscribe)
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#unsubscribe](https://centrifugal.github.io/centrifugo/server/http_api/#unsubscribe)
+[unsubscribe](https://centrifugal.dev/docs/server/server_api#unsubscribe)
 
 ```ruby
 client.unsubscribe(channel: 'chat', user: '1') # => {}
@@ -130,7 +130,7 @@ client.unsubscribe(channel: 'chat', user: '1') # => {}
 
 Allows to disconnect user by it's ID. Receives user ID as an argument.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#disconnect](https://centrifugal.github.io/centrifugo/server/http_api/#disconnect)
+[disconnect](https://centrifugal.dev/docs/server/server_api#disconnect)
 
 ```ruby
 # Disconnect user with `id = 1`
@@ -142,7 +142,7 @@ client.disconnect(user: '1') # => {}
 
 Get channel presence information(all clients currently subscribed on this channel).
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#presence](https://centrifugal.github.io/centrifugo/server/http_api/#presence)
+[presence](https://centrifugal.dev/docs/server/server_api#presence)
 
 ```ruby
 client.presence(channel: 'chat') 
@@ -167,7 +167,7 @@ client.presence(channel: 'chat')
 
 Get short channel presence information.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#presence_stats](https://centrifugal.github.io/centrifugo/server/http_api/#precence_stats)
+[presence_stats](https://centrifugal.dev/docs/server/server_api#presence_stats)
 
 ```ruby
 client.presence_stats(channel: 'chat')
@@ -184,7 +184,7 @@ client.presence_stats(channel: 'chat')
 
 Get channel history information (list of last messages published into channel).
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#history](https://centrifugal.github.io/centrifugo/server/http_api/#hisotry)
+[history](https://centrifugal.dev/docs/server/server_api#history)
 
 ```ruby
 client.history(channel: 'chat') 
@@ -211,7 +211,7 @@ client.history(channel: 'chat')
 
 Get list of active(with one or more subscribers) channels.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#channels](https://centrifugal.github.io/centrifugo/server/http_api/#channels)
+[channels](https://centrifugal.dev/docs/server/server_api#channels)
 
 ```ruby
 client.channels
@@ -229,7 +229,7 @@ client.channels
 
 Get running Centrifugo nodes information.
 
-[https://centrifugal.github.io/centrifugo/server/http_api/#info](https://centrifugal.github.io/centrifugo/server/http_api/#info)
+[info](https://centrifugal.dev/docs/server/server_api#info)
 
 ```ruby
 client.info
