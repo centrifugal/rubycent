@@ -39,7 +39,7 @@ module Cent
     def post(body: nil)
       response = connection.post(nil, body)
 
-      raise ResponseError, response.body['error'].transform_keys(&:to_sym) if response.body.key?('error')
+      raise ResponseError.new(**response.body['error'].transform_keys(&:to_sym)) if response.body.key?('error')
 
       response.body
     end
