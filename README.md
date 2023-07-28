@@ -1,4 +1,3 @@
-# Cent
 [![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
 ![Build Status](https://github.com/centrifugal/rubycent/actions/workflows/main.yml/badge.svg)
 
