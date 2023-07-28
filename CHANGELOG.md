@@ -1,3 +1,8 @@
+2.2.0
+=====
+
+* Fix `ArgumentError: wrong number of arguments` when creating `ResponseError` in Ruby 3, [#21](https://github.com/centrifugal/rubycent/pull/21)
+
 2.1.0
 =====
 
