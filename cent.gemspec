@@ -30,8 +30,6 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'faraday', '<3.0.0', '> 1.0.0'
-  # NOTE: Remove `faraday_middleware` after changing `faraday`'s minimum version to `2.0.0`.
-  spec.add_dependency 'faraday_middleware', '<2.0.0', '~> 1.0'
-  spec.add_dependency 'jwt', '~> 2.2'
+  spec.add_dependency 'faraday', '<3.0.0', '> 2.0.0'
+  spec.add_dependency 'jwt', '<3.0.0', '> 2.2.0'
 end

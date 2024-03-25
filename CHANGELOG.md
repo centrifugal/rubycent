@@ -1,3 +1,8 @@
+3.0.0
+=====
+
+Not using changelog anymore. See [Github releases](https://github.com/centrifugal/rubycent/releases) now.
+
 2.2.0
 =====
 
