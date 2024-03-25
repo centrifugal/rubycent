@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'faraday'
-require 'faraday_middleware' if Gem::Version.new(Faraday::VERSION) <= Gem::Version.new('2.0.0')
 require 'cent/http'
 
 module Cent

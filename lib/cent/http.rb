@@ -12,7 +12,7 @@ module Cent
 
     def initialize(code:, message:)
       @code = code
-      super message
+      super(message)
     end
   end
 
