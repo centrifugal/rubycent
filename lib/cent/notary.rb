@@ -57,8 +57,8 @@ module Cent
 
     # Generate JWT for private channels
     #
-    # @param client [String]
-    #   Client ID which wants to subscribe on channel
+    # @param sub [String]
+    #   Standard JWT claim which must contain an ID of current application user.
     #
     # @option channel [String]
     #   Channel that client tries to subscribe to (string).
@@ -71,16 +71,16 @@ module Cent
     #   client connection that can be provided for Centrifugo.
     #
     # @example Get private channel JWT with expiration and extra info
-    #   notary.issue_channel_token(client: 'client', channel: 'channel', exp: 3600, info: { 'message' => 'wat' })
+    #   notary.issue_channel_token(sub: '1', channel: 'channel', exp: 3600, info: { 'message' => 'wat' })
     #     #=> eyJhbGciOiJIUzI1NiJ9.eyJjbGllbnQiOiJjbG..."
     #
     # @see (https://centrifugal.github.io/centrifugo/server/private_channels/)
     #
     # @return [String]
     #
-    def issue_channel_token(client:, channel:, info: nil, exp: nil)
+    def issue_channel_token(sub:, channel:, info: nil, exp: nil)
       payload = {
-        'client' => client,
+        'sub' => sub,
         'channel' => channel,
         'info' => info,
         'exp' => exp

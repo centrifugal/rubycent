@@ -83,21 +83,21 @@ RSpec.describe Cent::Notary do
 
   describe '#issue_channel_token' do
     subject(:channel_token) do
-      notary.issue_channel_token(client: 'client', channel: 'channel', info: { 'foo' => 'bar' })
+      notary.issue_channel_token(sub: '1', channel: 'channel', info: { 'foo' => 'bar' })
     end
 
     let(:notary) { described_class.new(secret: 'secret') }
 
     context 'with no expiration' do
-      it { expect(channel_token).to match(/^eyJhbGciOiJIUzI1NiJ9.*SopvNY$/) }
+      it { expect(channel_token).to match(/^eyJhbGciOiJIUzI1NiJ9.*50TnzY$/) }
     end
 
     context 'with expiration' do
       subject(:channel_token) do
-        notary.issue_channel_token(client: 'client', channel: 'channel', info: { 'foo' => 'bar' }, exp: 1_628_877_060)
+        notary.issue_channel_token(sub: '1', channel: 'channel', info: { 'foo' => 'bar' }, exp: 1_628_877_060)
       end
 
-      it { expect(channel_token).to match(/^eyJhbGciOiJIUzI1NiJ9.*uQCqas$/) }
+      it { expect(channel_token).to match(/^eyJhbGciOiJIUzI1NiJ9.*yht5hk$/) }
     end
 
     context 'with RSA key' do
