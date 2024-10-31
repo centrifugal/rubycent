@@ -71,7 +71,7 @@ All channels starting with $ considered private and require a **channel token** 
 Private channel subscription token is also JWT([see the claims](https://centrifugal.github.io/centrifugo/server/private_channels/))
 
 ```ruby
-notary.issue_channel_token(client: 'client', channel: 'channel', exp: 1629050099, info: { scope: 'admin' }) 
+notary.issue_channel_token(sub: '42', channel: 'channel', exp: 1629050099, info: { scope: 'admin' }) 
 
 #=> "eyJhbGciOiJIUzI1NiJ9..."
 ```
