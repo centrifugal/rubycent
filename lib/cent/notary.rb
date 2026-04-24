@@ -6,84 +6,93 @@ require 'cent/error'
 module Cent
   # Cent::Notary
   #
-  #   Handle token generation
+  # Issues JWT tokens for Centrifugo client connections and channel subscriptions.
+  # Supports HMAC, RSA and ECDSA families of algorithms (HS256/384/512,
+  # RS256/384/512, ES256/384/512).
   #
+  # @see https://centrifugal.dev/docs/server/authentication
+  # @see https://centrifugal.dev/docs/server/channel_token_auth
   class Notary
-    # @param secret [String | OpenSSL::PKey::RSA | OpenSSL::PKey::EC] Secret key for the algorithm of your choice.
-    # @param algorithm [String] Specify algorithm(one from HMAC, RSA or ECDSA family). Default is HS256.
-    #
-    # @example Construct new client instance
-    #   notary = Cent::Notary.new(secret: 'secret')
-    #
+    # @param secret    [String, OpenSSL::PKey::RSA, OpenSSL::PKey::EC] Secret key
+    #   for the chosen algorithm. For HMAC pass the raw secret as a String. For
+    #   RSA/ECDSA pass a PEM-loaded {OpenSSL::PKey::RSA} / {OpenSSL::PKey::EC}.
+    # @param algorithm [String] JWT algorithm, defaults to `HS256`.
     def initialize(secret:, algorithm: 'HS256')
       raise Error, 'Secret can not be nil' if secret.nil?
 
-      @secret = secret
+      @secret    = secret
       @algorithm = algorithm
     end
 
-    # Generate connection JWT for the given user
+    # Issue a connection JWT used by clients when establishing a real-time
+    # connection to Centrifugo.
     #
-    # @param sub [String]
-    #   Standard JWT claim which must contain an ID of current application user.
+    # @param sub       [String] Standard JWT claim with the application user ID.
+    #   Use an empty string for anonymous connections.
+    # @param exp       [Integer] UNIX timestamp (seconds) when the token expires.
+    # @param iat       [Integer] UNIX timestamp (seconds) when the token was issued.
+    # @param jti       [String]  Unique token identifier.
+    # @param aud       [String]  Token audience (matches `client.token.audience`).
+    # @param iss       [String]  Token issuer  (matches `client.token.issuer`).
+    # @param info      [Hash]    Arbitrary public info attached to the connection.
+    # @param b64info   [String]  Base64-encoded `info` (for binary payloads).
+    # @param channels  [Array<String>] Server-side subscription channel list.
+    # @param subs      [Hash]    Server-side subscriptions with per-channel options.
+    # @param meta      [Hash]    Server-only metadata attached to the connection.
+    # @param expire_at [Integer] Override connection expiration timestamp.
     #
-    # @option channel [String]
-    #   Channel that client tries to subscribe to (string).
-    #
-    # @param exp [Integer]
-    #   (default: nil) UNIX timestamp seconds when token will expire.
-    #
-    # @param info [Hash]
-    #   (default: {}) This claim is optional - this is additional information about
-    #   client connection that can be provided for Centrifugo.
-    #
-    # @example Get user JWT with expiration and extra info
-    #   notary.issue_connection_token(sub: '1', exp: 3600, info: { 'role' => 'admin' })
-    #     #=> "eyJhbGciOiJIUzI1NiJ9.eyJzdWIi..."
-    #
-    # @see (https://centrifugal.github.io/centrifugo/server/authentication/)
-    #
-    # @return [String]
-    #
-    def issue_connection_token(sub:, info: nil, exp: nil)
+    # @return [String] Encoded JWT.
+    def issue_connection_token(sub:, exp: nil, iat: nil, jti: nil, aud: nil, iss: nil,
+                               info: nil, b64info: nil, channels: nil, subs: nil,
+                               meta: nil, expire_at: nil)
       payload = {
         'sub' => sub,
+        'exp' => exp,
+        'iat' => iat,
+        'jti' => jti,
+        'aud' => aud,
+        'iss' => iss,
         'info' => info,
-        'exp' => exp
+        'b64info' => b64info,
+        'channels' => channels,
+        'subs' => subs,
+        'meta' => meta,
+        'expire_at' => expire_at
       }.compact
 
       JWT.encode(payload, secret, algorithm)
     end
 
-    # Generate JWT for private channels
+    # Issue a subscription JWT used by clients to authorize subscription to a
+    # channel that requires token authorization.
     #
-    # @param sub [String]
-    #   Standard JWT claim which must contain an ID of current application user.
+    # @param sub       [String]  Application user ID (same meaning as in connection token).
+    # @param channel   [String]  Channel this subscription token is valid for.
+    # @param exp       [Integer] UNIX timestamp (seconds) when the token expires.
+    # @param iat       [Integer] UNIX timestamp (seconds) when the token was issued.
+    # @param jti       [String]  Unique token identifier.
+    # @param aud       [String]  Token audience.
+    # @param iss       [String]  Token issuer.
+    # @param info      [Hash]    Arbitrary channel info.
+    # @param b64info   [String]  Base64-encoded `info`.
+    # @param override  [Hash]    Per-subscription channel option overrides.
+    # @param expire_at [Integer] Override subscription expiration timestamp.
     #
-    # @option channel [String]
-    #   Channel that client tries to subscribe to (string).
-    #
-    # @param exp [Integer]
-    #   (default: nil) UNIX timestamp seconds when token will expire.
-    #
-    # @param info [Hash]
-    #   (default: {}) This claim is optional - this is additional information about
-    #   client connection that can be provided for Centrifugo.
-    #
-    # @example Get private channel JWT with expiration and extra info
-    #   notary.issue_channel_token(sub: '1', channel: 'channel', exp: 3600, info: { 'message' => 'wat' })
-    #     #=> eyJhbGciOiJIUzI1NiJ9.eyJjbGllbnQiOiJjbG..."
-    #
-    # @see (https://centrifugal.github.io/centrifugo/server/private_channels/)
-    #
-    # @return [String]
-    #
-    def issue_channel_token(sub:, channel:, info: nil, exp: nil)
+    # @return [String] Encoded JWT.
+    def issue_channel_token(sub:, channel:, exp: nil, iat: nil, jti: nil, aud: nil, iss: nil,
+                            info: nil, b64info: nil, override: nil, expire_at: nil)
       payload = {
         'sub' => sub,
         'channel' => channel,
+        'exp' => exp,
+        'iat' => iat,
+        'jti' => jti,
+        'aud' => aud,
+        'iss' => iss,
         'info' => info,
-        'exp' => exp
+        'b64info' => b64info,
+        'override' => override,
+        'expire_at' => expire_at
       }.compact
 
       JWT.encode(payload, secret, algorithm)

@@ -1,13 +1,52 @@
-require:
+plugins:
   - rubocop-rspec
   - rubocop-rake
+
 AllCops:
-  TargetRubyVersion: 2.5
+  TargetRubyVersion: 3.0
   NewCops: enable
-RSpec/ExampleLength:
+  Exclude:
+    - 'gemfiles/**/*'
+    - 'vendor/**/*'
+
+Metrics/ClassLength:
+  Max: 160
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/ParameterLists:
   Max: 15
+  CountKeywordArgs: false
+
+Metrics/AbcSize:
+  Max: 25
+
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
+    - '*.gemspec'
+    - 'Appraisals'
+
+RSpec/ExampleLength:
+  Max: 25
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/NestedGroups:
+  Max: 4
+
+# Stubs with `with(body: ...)` act as implicit expectations: a mismatched
+# request body leaves no matching stub and fails the request.
+RSpec/NoExpectationExample:
+  Exclude:
+    - 'spec/cent/client_spec.rb'
+
+# Integration specs live under spec/integration/ by design.
+RSpec/SpecFilePathFormat:
+  Exclude:
+    - 'spec/integration/**/*'
+
 Gemspec/RequireMFA:
   Enabled: false

@@ -1,37 +1,21 @@
 # frozen_string_literal: true
 
+require 'spec_helper'
+
 RSpec.describe Cent do
   it 'has a version number' do
     expect(Cent::VERSION).not_to be_nil
   end
 
   describe 'Cent::Client' do
-    let(:client) do
-      Cent::Client.new(api_key: 'api_key', endpoint: 'https://centrifu.go/api') do |c|
-        c.options.open_timeout = 15
-        c.options.timeout = 15
-        c.headers['User-Agent'] = 'Centrifugo API V2 Ruby Client'
-        c.adapter :test do |stub|
-          info_body = { method: 'info', params: {} }.to_json
-          info_headers = {
-            'Content-Type' => 'application/json',
-            'Authorization' => 'apikey api_key',
-            'User-Agent' => 'Centrifugo API V2 Ruby Client'
-          }
-
-          stub.post('/api', info_body, info_headers) do |_env|
-            [
-              200,
-              { 'Content-Type': 'application/json' },
-              '{}'
-            ]
-          end
-        end
+    it 'yields the Faraday connection for customization' do
+      yielded = nil
+      Cent::Client.new(api_key: 'k') do |conn|
+        yielded = conn
+        conn.headers['User-Agent'] = 'test-agent'
       end
-    end
-
-    it 'supports connection configuration' do
-      expect(client.info).to eq({})
+      expect(yielded).to be_a(Faraday::Connection)
+      expect(yielded.headers['User-Agent']).to eq('test-agent')
     end
   end
 end

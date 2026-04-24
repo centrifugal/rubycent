@@ -1,0 +1,17 @@
+services:
+  centrifugo:
+    image: centrifugo/centrifugo:v6.7.1
+    command: centrifugo
+    ports:
+      - "8000:8000"
+      - "10000:10000"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      CENTRIFUGO_HTTP_API_KEY: api_key
+      CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_TTL: 300s
+      CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_SIZE: 100
+      CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_PRESENCE: "true"
+      CENTRIFUGO_GRPC_API_ENABLED: "true"

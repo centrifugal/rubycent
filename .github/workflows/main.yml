@@ -1,20 +1,75 @@
-name: Ruby
+name: CI
 
-on: [push,pull_request]
+on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
+    name: RuboCop
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ruby-version: ['2.7', '3.3']
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: ${{ matrix.ruby-version }}
-    - name: Run the default task
-      run: |
-        bundle install
-        bundle exec rake
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      - run: bundle exec rubocop
+
+  test:
+    # Matrix cross-product: Ruby × gemfile. Faraday 3 and ruby-head cells are
+    # marked experimental — they don't block CI until those releases stabilise.
+    name: Test (Ruby ${{ matrix.ruby }} / ${{ matrix.gemfile }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.4']
+        gemfile:
+          - gemfiles/faraday2_jwt2.gemfile
+          - gemfiles/faraday2_jwt3.gemfile
+        experimental: [false]
+        include:
+          - ruby: '3.4'
+            gemfile: gemfiles/faraday3_jwt2.gemfile
+            experimental: true
+          - ruby: '3.4'
+            gemfile: gemfiles/faraday3_jwt3.gemfile
+            experimental: true
+          - ruby: 'head'
+            gemfile: gemfiles/faraday2_jwt3.gemfile
+            experimental: true
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.gemfile }}
+      CENTRIFUGO_API_URL: http://localhost:8000/api
+      CENTRIFUGO_API_KEY: api_key
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Centrifugo
+        run: |
+          docker run -d --name centrifugo \
+            -p 8000:8000 -p 10000:10000 \
+            -e CENTRIFUGO_HTTP_API_KEY="api_key" \
+            -e CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_TTL="300s" \
+            -e CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_SIZE="100" \
+            -e CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_PRESENCE="true" \
+            -e CENTRIFUGO_GRPC_API_ENABLED="true" \
+            centrifugo/centrifugo:v6.7.1 centrifugo
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Wait for Centrifugo
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health >/dev/null; then
+              echo "Centrifugo ready"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Centrifugo did not become healthy"; docker logs centrifugo; exit 1
+
+      - name: Run tests
+        run: bundle exec rspec
