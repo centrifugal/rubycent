@@ -4,7 +4,6 @@ services:
     command: centrifugo
     ports:
       - "8000:8000"
-      - "10000:10000"
     ulimits:
       nofile:
         soft: 65536
@@ -14,4 +13,3 @@ services:
       CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_TTL: 300s
       CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_HISTORY_SIZE: 100
       CENTRIFUGO_CHANNEL_WITHOUT_NAMESPACE_PRESENCE: "true"
-      CENTRIFUGO_GRPC_API_ENABLED: "true"
