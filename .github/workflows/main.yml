@@ -15,26 +15,22 @@ jobs:
       - run: bundle exec rubocop
 
   test:
-    # Matrix cross-product: Ruby × gemfile. Faraday 3 and ruby-head cells are
-    # marked experimental — they don't block CI until those releases stabilise.
+    # Faraday 3 gemfiles exist under gemfiles/ for forward-readiness and can be
+    # run locally via `bundle exec appraisal rspec`. They're not wired into CI
+    # until Faraday 3 is published to RubyGems. The ruby-head cell tracks Ruby
+    # master (including future Ruby 4) and is marked experimental.
     name: Test (Ruby ${{ matrix.ruby }} / ${{ matrix.gemfile }})
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.4']
+        ruby: ['3.4', '4.0']
         gemfile:
           - gemfiles/faraday2_jwt2.gemfile
           - gemfiles/faraday2_jwt3.gemfile
         experimental: [false]
         include:
-          - ruby: '3.4'
-            gemfile: gemfiles/faraday3_jwt2.gemfile
-            experimental: true
-          - ruby: '3.4'
-            gemfile: gemfiles/faraday3_jwt3.gemfile
-            experimental: true
           - ruby: 'head'
             gemfile: gemfiles/faraday2_jwt3.gemfile
             experimental: true
