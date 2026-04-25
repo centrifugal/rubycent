@@ -3,301 +3,230 @@
 require 'spec_helper'
 
 RSpec.describe Cent::Client do
-  let(:channel) { 'chat' }
-  let(:expected_body) { '{}' }
-  let(:client) { described_class.new(api_key: 'api_key') }
+  subject(:client) { described_class.new(api_key: 'api_key') }
 
-  before do
-    request_headers = {
-      'Content-Type' => 'application/json',
-      'Authorization' => 'apikey api_key'
-    }
-    response_headers = { 'Content-Type' => 'application/json' }
-    stub_request(:post, 'http://localhost:8000/api')
-      .with(body: params, headers: request_headers)
-      .to_return(status: 200, body: expected_body, headers: response_headers)
+  let(:api_endpoint) { 'http://localhost:8000/api' }
+  let(:expected_headers) do
+    { 'Content-Type' => 'application/json', 'X-API-Key' => 'api_key' }
   end
 
-  describe 'error handling' do
-    subject(:response) { client.history(channel: channel) }
-
-    let(:expected_body) { '{"error": { "code": 108, "message": "not available"}}' }
-    let(:data) { { content: 'wat' } }
-    let(:params) do
-      {
-        method: 'history',
-        params: { channel: channel }
-      }
-    end
-
-    it do
-      expect { response }
-        .to raise_exception(
-          an_instance_of(Cent::ResponseError).and(have_attributes(code: 108, message: 'not available'))
-        )
-    end
+  def stub_method(method, request_body:, response_body: '{"result":{}}', status: 200)
+    stub_request(:post, "#{api_endpoint}/#{method}")
+      .with(body: request_body, headers: expected_headers)
+      .to_return(status: status, body: response_body, headers: { 'Content-Type' => 'application/json' })
   end
 
   describe '#publish' do
-    subject(:response) { client.publish(channel: channel, data: data) }
-
-    let(:data) { { content: 'wat' } }
-
-    let(:params) do
-      {
-        method: 'publish',
-        params: { channel: channel, data: data }
-      }
+    it 'posts to /publish with channel and data' do
+      stub = stub_method('publish', request_body: { 'channel' => 'chat', 'data' => { 'content' => 'hi' } })
+      expect(client.publish(channel: 'chat', data: { content: 'hi' })).to eq('result' => {})
+      expect(stub).to have_been_requested
     end
 
-    it { is_expected.to eq({}) }
+    it 'omits nil kwargs and passes the rest through' do
+      stub_method('publish',
+                  request_body: {
+                    'channel' => 'chat',
+                    'data' => { 'x' => 1 },
+                    'skip_history' => true,
+                    'tags' => { 'k' => 'v' },
+                    'idempotency_key' => 'k1',
+                    'delta' => true
+                  })
+      client.publish(channel: 'chat', data: { x: 1 }, skip_history: true,
+                     tags: { k: 'v' }, idempotency_key: 'k1', delta: true)
+    end
   end
 
   describe '#broadcast' do
-    subject(:response) { client.broadcast(channels: [channel], data: data) }
-
-    let(:data) { { content: 'wat' } }
-
-    let(:params) do
-      {
-        method: 'broadcast',
-        params: { channels: [channel], data: data }
-      }
+    it 'posts to /broadcast with channels array' do
+      stub_method('broadcast',
+                  request_body: { 'channels' => %w[a b], 'data' => { 'x' => 1 } })
+      client.broadcast(channels: %w[a b], data: { x: 1 })
     end
+  end
 
-    it { is_expected.to eq({}) }
+  describe '#subscribe' do
+    it 'posts to /subscribe with user and channel' do
+      stub_method('subscribe', request_body: { 'user' => '42', 'channel' => 'chat' })
+      client.subscribe(user: '42', channel: 'chat')
+    end
   end
 
   describe '#unsubscribe' do
-    subject(:response) { client.unsubscribe(channel: channel, user: 1) }
-
-    let(:params) do
-      {
-        method: 'unsubscribe',
-        params: { channel: channel, user: 1 }
-      }
+    it 'posts to /unsubscribe' do
+      stub_method('unsubscribe', request_body: { 'user' => '42', 'channel' => 'chat' })
+      client.unsubscribe(user: '42', channel: 'chat')
     end
-
-    it { is_expected.to eq({}) }
   end
 
   describe '#disconnect' do
-    subject(:response) { client.disconnect(user: 1) }
-
-    let(:params) do
-      {
-        method: 'disconnect',
-        params: { user: 1 }
-      }
+    it 'posts to /disconnect' do
+      stub_method('disconnect', request_body: { 'user' => '42' })
+      client.disconnect(user: '42')
     end
 
-    it { is_expected.to eq({}) }
-  end
-
-  describe 'presence' do
-    let(:expected_body) do
-      '{
-    "result": {
-      "presence": {
-        "c54313b2-0442-499a-a70c-051f8588020f": {
-          "client": "c54313b2-0442-499a-a70c-051f8588020f",
-          "user": "42"
-        }
-      }
-    }
-  }'
-    end
-
-    describe '#presence' do
-      subject(:response) { client.presence(channel: channel) }
-
-      let(:params) do
-        {
-          method: 'presence',
-          params: { channel: channel }
-        }
-      end
-
-      it 'returns hash with channel presence information' do
-        expected_hash = {
-          'result' => {
-            'presence' => {
-              'c54313b2-0442-499a-a70c-051f8588020f' => {
-                'client' => 'c54313b2-0442-499a-a70c-051f8588020f',
-                'user' => '42'
-              }
-            }
-          }
-        }
-
-        expect(response).to eq(expected_hash)
-      end
+    it 'supports client, session, whitelist and disconnect object' do
+      stub_method('disconnect',
+                  request_body: {
+                    'user' => '42',
+                    'client' => 'c1',
+                    'session' => 's1',
+                    'whitelist' => %w[c9],
+                    'disconnect' => { 'code' => 4000, 'reason' => 'bye' }
+                  })
+      client.disconnect(user: '42', client: 'c1', session: 's1', whitelist: %w[c9],
+                        disconnect: { 'code' => 4000, 'reason' => 'bye' })
     end
   end
 
-  describe 'presence_stats' do
-    let(:expected_body) do
-      '{
-    "result": {
-      "num_clients": 0,
-      "num_users": 0
-    }
-  }'
-    end
-
-    describe '#presence_stats' do
-      subject(:response) { client.presence_stats(channel: channel) }
-
-      let(:params) do
-        {
-          method: 'presence_stats',
-          params: { channel: channel }
-        }
-      end
-
-      it 'returns hash with channel presence_stats information' do
-        expected_hash = {
-          'result' => {
-            'num_clients' => 0,
-            'num_users' => 0
-          }
-        }
-
-        expect(response).to eq(expected_hash)
-      end
+  describe '#refresh' do
+    it 'posts to /refresh' do
+      stub_method('refresh', request_body: { 'user' => '42', 'expired' => true })
+      client.refresh(user: '42', expired: true)
     end
   end
 
-  describe 'history' do
-    let(:expected_body) do
-      '{
-    "result": {
-      "publications": [
-        {
-          "data": {
-            "text": "hello"
-          },
-          "uid": "BWcn14OTBrqUhTXyjNg0fg"
-        }
+  describe '#presence' do
+    it 'posts to /presence' do
+      stub_method('presence',
+                  request_body: { 'channel' => 'chat' },
+                  response_body: '{"result":{"presence":{}}}')
+      expect(client.presence(channel: 'chat')).to eq('result' => { 'presence' => {} })
+    end
+  end
+
+  describe '#presence_stats' do
+    it 'posts to /presence_stats' do
+      stub_method('presence_stats',
+                  request_body: { 'channel' => 'chat' },
+                  response_body: '{"result":{"num_clients":0,"num_users":0}}')
+      expect(client.presence_stats(channel: 'chat')).to eq(
+        'result' => { 'num_clients' => 0, 'num_users' => 0 }
+      )
+    end
+  end
+
+  describe '#history' do
+    it 'posts to /history with optional limit/since/reverse' do
+      stub_method('history',
+                  request_body: { 'channel' => 'chat', 'limit' => 10, 'reverse' => true })
+      client.history(channel: 'chat', limit: 10, reverse: true)
+    end
+  end
+
+  describe '#history_remove' do
+    it 'posts to /history_remove' do
+      stub_method('history_remove', request_body: { 'channel' => 'chat' })
+      client.history_remove(channel: 'chat')
+    end
+  end
+
+  describe '#channels' do
+    it 'posts to /channels with optional pattern' do
+      stub_method('channels',
+                  request_body: { 'pattern' => 'chat:*' },
+                  response_body: '{"result":{"channels":{}}}')
+      client.channels(pattern: 'chat:*')
+    end
+
+    it 'defaults to empty body when no pattern' do
+      stub_method('channels', request_body: {}, response_body: '{"result":{"channels":{}}}')
+      client.channels
+    end
+  end
+
+  describe '#info' do
+    it 'posts to /info with empty body' do
+      stub_method('info', request_body: {}, response_body: '{"result":{"nodes":[]}}')
+      expect(client.info).to eq('result' => { 'nodes' => [] })
+    end
+  end
+
+  describe '#batch' do
+    it 'posts to /batch with commands and parallel flag' do
+      commands = [
+        { 'publish' => { 'channel' => 'a', 'data' => {} } },
+        { 'publish' => { 'channel' => 'b', 'data' => {} } }
       ]
-    }
-  }'
-    end
-
-    describe '#history' do
-      subject(:response) { client.history(channel: channel) }
-
-      let(:params) do
-        {
-          method: 'history',
-          params: { channel: channel }
-        }
-      end
-
-      it 'returns channel history information' do
-        expected_hash = {
-          'result' => {
-            'publications' => [
-              {
-                'data' => {
-                  'text' => 'hello'
-                },
-                'uid' => 'BWcn14OTBrqUhTXyjNg0fg'
-              }
-            ]
-          }
-        }
-
-        expect(response).to eq(expected_hash)
-      end
+      stub_method('batch',
+                  request_body: { 'commands' => commands, 'parallel' => true },
+                  response_body: '{"replies":[{"publish":{}},{"publish":{}}]}')
+      expect(client.batch(commands: commands, parallel: true)).to eq(
+        'replies' => [{ 'publish' => {} }, { 'publish' => {} }]
+      )
     end
   end
 
-  describe 'channels' do
-    let(:expected_body) do
-      '{
-      "result": {
-        "channels": [
-          "chat"
+  describe 'API error responses' do
+    it 'raises Cent::ResponseError on a top-level error body' do
+      stub_method('publish',
+                  request_body: { 'channel' => 'x:y', 'data' => {} },
+                  response_body: '{"error":{"code":102,"message":"unknown channel"}}')
+      expect { client.publish(channel: 'x:y', data: {}) }
+        .to raise_error(Cent::ResponseError) do |err|
+          expect(err.code).to eq(102)
+          expect(err.message).to eq('unknown channel')
+        end
+    end
+
+    it 'does not raise on per-reply errors inside a batch response' do
+      body = '{"replies":[{"publish":{}},{"error":{"code":102,"message":"unknown channel"}}]}'
+      stub_method('batch',
+                  request_body: { 'commands' => [{ 'publish' => { 'channel' => 'a' } }] },
+                  response_body: body)
+      expect(client.batch(commands: [{ 'publish' => { 'channel' => 'a' } }])).to eq(
+        'replies' => [
+          { 'publish' => {} },
+          { 'error' => { 'code' => 102, 'message' => 'unknown channel' } }
         ]
-      }
-   }'
+      )
     end
 
-    describe '#channels' do
-      subject(:response) { client.channels }
-
-      let(:params) do
-        {
-          method: 'channels',
-          params: {}
-        }
-      end
-
-      it 'returns channel history information' do
-        expected_hash = {
-          'result' => {
-            'channels' => [
-              'chat'
-            ]
-          }
-        }
-
-        expect(response).to eq(expected_hash)
-      end
+    it 'does not raise on per-channel errors inside a broadcast result' do
+      body = '{"result":{"responses":[{"result":{"offset":1}},{"error":{"code":102,"message":"unknown channel"}}]}}'
+      stub_method('broadcast',
+                  request_body: { 'channels' => %w[a b], 'data' => {} },
+                  response_body: body)
+      response = client.broadcast(channels: %w[a b], data: {})
+      expect(response.dig('result', 'responses', 1, 'error', 'code')).to eq(102)
     end
   end
 
-  describe 'info' do
-    let(:expected_body) do
-      '{
-    "result": {
-      "nodes": [
-        {
-          "name": "Alexanders-MacBook-Pro.local_8000",
-          "num_channels": 0,
-          "num_clients": 0,
-          "num_users": 0,
-          "uid": "f844a2ed-5edf-4815-b83c-271974003db9",
-          "uptime": 0,
-          "version": ""
-        }
-      ]
-    }
-  }'
+  describe 'transport errors' do
+    it 'raises Cent::UnauthorizedError on 401' do
+      stub_method('info', request_body: {}, status: 401, response_body: '')
+      expect { client.info }.to raise_error(Cent::UnauthorizedError) do |err|
+        expect(err.status).to eq(401)
+        expect(err).to be_a(Cent::TransportError)
+      end
     end
 
-    describe '#info' do
-      subject(:response) { client.info }
-
-      let(:params) do
-        {
-          method: 'info',
-          params: {}
-        }
+    it 'raises Cent::TransportError on 5xx' do
+      stub_method('info', request_body: {}, status: 500, response_body: '')
+      expect { client.info }.to raise_error(Cent::TransportError) do |err|
+        expect(err.status).to eq(500)
       end
+    end
 
-      let(:expectation) do
-        {
-          'result' => {
-            'nodes' => [
-              {
-                'name' => 'Alexanders-MacBook-Pro.local_8000',
-                'num_channels' => 0,
-                'num_clients' => 0,
-                'num_users' => 0,
-                'uid' => 'f844a2ed-5edf-4815-b83c-271974003db9',
-                'uptime' => 0,
-                'version' => ''
-              }
-            ]
-          }
-        }
-      end
+    it 'raises Cent::TimeoutError when the adapter raises Faraday::TimeoutError' do
+      stub_request(:post, "#{api_endpoint}/info").to_raise(Faraday::TimeoutError.new('timed out'))
+      expect { client.info }.to raise_error(Cent::TimeoutError)
+    end
 
-      it 'returns channel history information' do
-        expect(response).to eq(expectation)
-      end
+    it 'raises Cent::NetworkError on connection failure' do
+      stub_request(:post, "#{api_endpoint}/info").to_raise(Faraday::ConnectionFailed.new('nope'))
+      expect { client.info }.to raise_error(Cent::NetworkError)
+    end
+  end
+
+  describe 'endpoint without trailing slash' do
+    it 'still produces /api/<method> URLs' do
+      c = described_class.new(api_key: 'api_key', endpoint: 'http://centrifugo.local/api')
+      stub_request(:post, 'http://centrifugo.local/api/info')
+        .to_return(status: 200, body: '{"result":{"nodes":[]}}',
+                   headers: { 'Content-Type' => 'application/json' })
+      expect(c.info).to eq('result' => { 'nodes' => [] })
     end
   end
 end

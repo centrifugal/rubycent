@@ -1,281 +1,260 @@
-[![Code Climate](https://codeclimate.com/github/centrifugal/centrifuge-ruby/badges/gpa.svg)](https://codeclimate.com/github/centrifugal/centrifuge-ruby)
+# cent
+
 ![Build Status](https://github.com/centrifugal/rubycent/actions/workflows/main.yml/badge.svg)
 
-[Centrifugo HTTP API](https://centrifugal.dev/docs/server/server_api) client in Ruby.
+Ruby client for the [Centrifugo](https://centrifugal.dev) server HTTP API.
+
+- `Cent::Client` — call server API methods (publish, broadcast, presence, history, …).
+- `Cent::Notary` — issue connection and subscription JWTs.
+
+Works with Centrifugo **v4 and newer** (tested against v6.7.1). Ruby 3.0+.
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
 ```ruby
-gem 'cent' 
+gem 'cent', '~> 4.0'
 ```
 
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install cent
-
-## Usage
-
-Functionality is split between two classes:
- - `Cent::Client` to call API methods
- - `Cent::Notary` to generate tokens
-
-### Token Generation
-
-```ruby
-notary = Cent::Notary.new(secret: 'secret')
+```sh
+$ bundle install
 ```
 
-By default it uses HS256 to generate tokens, but you can set it to one of the HMAC, RSA or ECDSA family. 
-
-#### RSA
+## API client
 
 ```ruby
-secret = OpenSSL::PKey::RSA.new(File.read('./rsa_secret.pem'))
-notary = Cent::Notary.new(secret: secret, algorithm: 'RS256')
+client = Cent::Client.new(api_key: 'your-api-key')
+# Or pointing at a remote Centrifugo:
+client = Cent::Client.new(
+  api_key: 'your-api-key',
+  endpoint: 'https://centrifugo.example.com/api',
+  timeout: 5
+)
 ```
 
-#### ECDSA
+Every method returns the parsed response body from Centrifugo:
+
+- On success the body has a `"result"` key: `{ "result" => { ... } }`.
+- On an API-level failure (e.g. unknown channel, namespace not found) `Cent::ResponseError` is raised with Centrifugo's numeric `code` and `message`.
+- On a transport problem (network failure, timeout, non-2xx HTTP, malformed JSON) a `Cent::Error` subclass is raised.
+
+`batch` and `broadcast` are different — see their sections below.
+
+### Customizing the connection
+
+The initializer yields the underlying [`Faraday::Connection`](https://lostisland.github.io/faraday/) so you can adjust headers, timeouts, adapter, etc.
 
 ```ruby
-secret = OpenSSL::PKey::EC.new(File.read('./ecdsa_secret.pem'))
-notary = Cent::Notary.new(secret: secret, algorithm: 'ES256')
-```
-
-#### Connection token
-
-When connecting to Centrifugo client [must provide connection JWT token](https://centrifugal.github.io/centrifugo/server/authentication/) with several predefined credential claims.
-
-```ruby
-notary.issue_connection_token(sub: '42') 
-
-#=> "eyJhbGciOiJIUzI1NiJ9..."
-```
-
-`info` and `exp` are supported as well: 
-
-```ruby
-notary.issue_connection_token(sub: '42', info: { scope: 'admin' }, exp: 1629050099) 
-
-#=> "eyJhbGciOiJIUzI1NiJ9..."
-```
-
-### Private channel token
-
-All channels starting with $ considered private and require a **channel token** to subscribe. 
-Private channel subscription token is also JWT([see the claims](https://centrifugal.github.io/centrifugo/server/private_channels/))
-
-```ruby
-notary.issue_channel_token(sub: '42', channel: 'channel', exp: 1629050099, info: { scope: 'admin' }) 
-
-#=> "eyJhbGciOiJIUzI1NiJ9..."
-```
- 
-### API Client
-
-A client requires your Centrifugo API key to execute all requests.
-
-```ruby
-client = Cent::Client.new(api_key: 'key')
-```
-
-you can customize your connection as you wish, just remember it's a [Faraday::Connection](https://lostisland.github.io/faraday/usage/#customizing-faradayconnection) instance:
-
-```ruby
-client = Cent::Client.new(api_key: 'key', endpoint: 'https://centrifu.go/api') do |connection|
-  connection.headers['User-Agent'] = 'Centrifugo Ruby Client'
-  connection.options.open_timeout = 3
-  connection.options.timeout = 7
-  connection.adapter :typhoeus
+Cent::Client.new(api_key: 'k') do |conn|
+  conn.headers['User-Agent'] = 'my-app/1.0'
+  conn.options.open_timeout  = 3
+  conn.options.timeout       = 7
+  conn.adapter :typhoeus
 end
 ```
 
-#### Publish
-
-Send data to the channel.
-
-[publish](https://centrifugal.dev/docs/server/server_api#publish)
+### Publishing
 
 ```ruby
-client.publish(channel: 'chat', data: 'hello') # => {}
+client.publish(channel: 'chat', data: { text: 'hello' })
+# => {"result" => {"offset" => 1, "epoch" => "xyz"}}
+
+client.publish(
+  channel:         'chat',
+  data:            { text: 'hello' },
+  skip_history:    false,
+  tags:            { 'author' => '42' },
+  idempotency_key: 'my-idempotency-key',
+  delta:           true
+)
 ```
 
-#### Broadcast
+See [publish](https://centrifugal.dev/docs/server/server_api#publish).
 
-Sends data to multiple channels.
-
-[broadcast](https://centrifugal.dev/docs/server/server_api#broadcast)
+### Broadcast
 
 ```ruby
-client.broadcast(channels: ["clients", "staff"], data: 'hello') # => {}
+response = client.broadcast(channels: %w[chat:1 chat:2], data: { text: 'hi' })
+# response => { "result" => { "responses" => [ {"result" => {...}}, {"result" => {...}} ] } }
 ```
 
-#### Unsubscribe
-
-Unsubscribe user from channel. Receives to arguments: channel and user (user ID you want to unsubscribe)
-
-[unsubscribe](https://centrifugal.dev/docs/server/server_api#unsubscribe)
+The outer call only raises `Cent::ResponseError` if the whole broadcast is rejected (e.g. malformed request). Per-channel failures are delivered as individual entries in `response["result"]["responses"]`, each of which may contain an `"error"` key — **these are not raised**. Walk the array to check them:
 
 ```ruby
-client.unsubscribe(channel: 'chat', user: '1') # => {}
+response['result']['responses'].each_with_index do |r, i|
+  warn "channel #{i} failed: #{r['error']['message']}" if r['error']
+end
 ```
 
-#### Disconnect
-
-Allows to disconnect user by it's ID. Receives user ID as an argument.
-
-[disconnect](https://centrifugal.dev/docs/server/server_api#disconnect)
+### Subscribe / Unsubscribe
 
 ```ruby
-# Disconnect user with `id = 1`
-# 
-client.disconnect(user: '1') # => {}
+client.subscribe(user: '42', channel: 'chat')
+client.unsubscribe(user: '42', channel: 'chat')
 ```
 
-#### Presence
-
-Get channel presence information(all clients currently subscribed on this channel).
-
-[presence](https://centrifugal.dev/docs/server/server_api#presence)
+### Disconnect / Refresh
 
 ```ruby
-client.presence(channel: 'chat') 
+client.disconnect(user: '42')
+client.disconnect(user: '42', whitelist: %w[keep-this-client-id])
 
-# {
-#   'result' => {
-#     'presence' => {
-#       'c54313b2-0442-499a-a70c-051f8588020f' => {
-#         'client' => 'c54313b2-0442-499a-a70c-051f8588020f',
-#         'user' => '42'
-#       },
-#       'adad13b1-0442-499a-a70c-051f858802da' => {
-#         'client' => 'adad13b1-0442-499a-a70c-051f858802da',
-#         'user' => '42'
-#       }
-#     }
-#   }
-# }
-``` 
+client.refresh(user: '42', expired: true)
+```
 
-#### Presence stats
-
-Get short channel presence information.
-
-[presence_stats](https://centrifugal.dev/docs/server/server_api#presence_stats)
+### Presence / Presence stats
 
 ```ruby
+client.presence(channel: 'chat')
 client.presence_stats(channel: 'chat')
-
-# {
-#   "result" => {
-#     "num_clients" => 0,
-#     "num_users" => 0
-#   }
-# }
 ```
 
-#### History
-
-Get channel history information (list of last messages published into channel).
-
-[history](https://centrifugal.dev/docs/server/server_api#history)
+### History
 
 ```ruby
-client.history(channel: 'chat') 
-
-# {
-#   'result' => {
-#     'publications' => [
-#       {
-#         'data' => {
-#           'text' => 'hello'
-#         }
-#       },
-#       {
-#         'data' => {
-#           'text' => 'hi!'
-#         }
-#       }
-#     ]
-#   }
-# }
+client.history(channel: 'chat', limit: 10)
+client.history(channel: 'chat', limit: 10, reverse: true)
+client.history(channel: 'chat', limit: 10, since: { 'offset' => 5, 'epoch' => 'xyz' })
+client.history_remove(channel: 'chat')
 ```
 
-#### Channels
-
-Get list of active(with one or more subscribers) channels.
-
-[channels](https://centrifugal.dev/docs/server/server_api#channels)
+### Channels
 
 ```ruby
 client.channels
-
-# {
-#   'result' => {
-#     'channels' => [
-#       'chat'
-#     ]
-#   }
-# }
+client.channels(pattern: 'chat:*')
 ```
 
-#### Info
-
-Get running Centrifugo nodes information.
-
-[info](https://centrifugal.dev/docs/server/server_api#info)
+### Info
 
 ```ruby
 client.info
-
-# {
-#   'result' => {
-#     'nodes' => [
-#       {
-#         'name' => 'Alexanders-MacBook-Pro.local_8000',
-#         'num_channels' => 0,
-#         'num_clients' => 0,
-#         'num_users' => 0,
-#         'uid' => 'f844a2ed-5edf-4815-b83c-271974003db9',
-#         'uptime' => 0,
-#         'version' => ''
-#       }
-#     ]
-#   }
-# }
 ```
 
-### Errors
+### Batch
 
-Network errors are not wrapped and will raise `Faraday::ClientError`.
-
-In cases when Centrifugo returns 200 with `error` key in the body we wrap it and return custom error:
+Send many commands in one HTTP request — Centrifugo processes them sequentially (or in parallel with `parallel: true`) and returns one reply per command in the same order.
 
 ```ruby
-# Raised when response from Centrifugo contains any error as result of API command execution.
-#
+response = client.batch(commands: [
+  { 'publish'        => { 'channel' => 'a', 'data' => { 'x' => 1 } } },
+  { 'publish'        => { 'channel' => 'b', 'data' => { 'x' => 2 } } },
+  { 'presence_stats' => { 'channel' => 'a' } }
+])
+# => { "replies" => [ {"publish" => {...}}, {"publish" => {...}}, {"presence_stats" => {...}} ] }
+```
+
+Two things about batch are different from every other method:
+
+1. **No `result` wrapper.** The response is `{ "replies" => [...] }` at the top level. This matches Centrifugo's wire format.
+2. **Per-command errors are not raised.** Each entry in `replies` may instead be `{ "error" => { "code" => ..., "message" => ... } }`. Raising on the first would make partial-success responses impossible to inspect — so the caller is expected to walk the array:
+
+   ```ruby
+   response['replies'].each_with_index do |reply, i|
+     if reply['error']
+       warn "command #{i} failed: #{reply['error']['code']} #{reply['error']['message']}"
+     end
+   end
+   ```
+
+   `Cent::ResponseError` is still raised if Centrifugo rejects the batch request as a whole (e.g. malformed top-level body).
+
+### Error handling
+
+```ruby
 begin
-  client.publish(channel: 'channel', data: { foo: :bar })
-rescue Cent::ResponseError => ex
-  ex.message # => "Invalid format"
+  response = client.publish(channel: 'chat', data: 'hi')
+rescue Cent::ResponseError => e
+  # Centrifugo rejected the request (e.g. unknown channel, namespace not found).
+  puts "Centrifugo error #{e.code}: #{e.message}"
+rescue Cent::TimeoutError
+  # request timed out
+rescue Cent::NetworkError
+  # connection refused / DNS failure / etc.
+rescue Cent::UnauthorizedError => e
+  # HTTP 401 — API key is wrong
+rescue Cent::TransportError => e
+  # other 4xx/5xx — e.status has the HTTP code
+rescue Cent::DecodeError
+  # response body wasn't valid JSON
 end
 ```
 
+All of the above inherit from `Cent::Error`, so you can rescue that single class if you don't need to discriminate.
+
+## Token generation
+
+```ruby
+notary = Cent::Notary.new(secret: 'hmac-secret')                       # HS256
+notary = Cent::Notary.new(secret: rsa_private_key, algorithm: 'RS256') # RSA
+notary = Cent::Notary.new(secret: ec_private_key,  algorithm: 'ES256') # ECDSA
+```
+
+### Connection token
+
+Used by clients to establish a real-time connection. See [authentication](https://centrifugal.dev/docs/server/authentication).
+
+```ruby
+notary.issue_connection_token(sub: '42')
+notary.issue_connection_token(sub: '42', exp: Time.now.to_i + 600, info: { name: 'Alex' })
+
+# With any of the standard/Centrifugo claims:
+notary.issue_connection_token(
+  sub: '42', exp: 1735689600, iat: 1735686000, jti: SecureRandom.uuid,
+  aud: 'centrifugo', iss: 'my-app',
+  info: { role: 'admin' }, meta: { tenant: 'acme' },
+  channels: %w[user:42 news],
+  subs: { 'room:1' => { 'data' => { 'welcome' => true } } }
+)
+```
+
+### Subscription token
+
+Used by clients to subscribe to a channel that requires token authorization. See [channel token auth](https://centrifugal.dev/docs/server/channel_token_auth).
+
+```ruby
+notary.issue_channel_token(sub: '42', channel: 'private-chat', exp: 1735689600)
+notary.issue_channel_token(
+  sub: '42', channel: 'private-chat',
+  info: { role: 'writer' },
+  override: { 'presence' => { 'value' => true } }
+)
+```
+
+## Migrating from v3
+
+v4 changes some aspects of the library. We expect smooth migration for happy path though.
+
+- **Centrifugo v5+ is required.** v3 of this gem spoke the legacy `POST /api` JSON-RPC-style protocol; v4 uses the current per-method endpoints (`POST /api/publish`, `POST /api/broadcast`, …) and sends the API key as `X-API-Key` instead of `Authorization: apikey <key>`.
+- **Error handling is unchanged for the common case.** `Cent::ResponseError` still exists and is still raised when Centrifugo returns a top-level API error. Existing `rescue Cent::ResponseError => e` blocks using `e.code` / `e.message` keep working. The new additions are typed transport errors — `Cent::TimeoutError`, `Cent::NetworkError`, `Cent::TransportError`, `Cent::UnauthorizedError`, `Cent::DecodeError` — all subclassed under `Cent::Error`.
+- **Keyword arg rename**: `Cent::Notary#issue_channel_token(client:)` → `issue_channel_token(sub:)` to match Centrifugo's standard `sub` JWT claim.
+- **Ruby 3.0+** is required (was 2.5+).
+- **New methods** added for common Centrifugo operations: `subscribe`, `refresh`, `history_remove`, `batch`.
+- **Richer kwargs** on existing methods (e.g. `publish` now accepts `tags`, `skip_history`, `idempotency_key`, `delta`, `version`, `version_epoch`, `b64data`; `history` accepts `limit`, `since`, `reverse`; `channels` accepts `pattern`).
+
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```sh
+$ bin/setup                # install dependencies
+$ bundle exec rspec        # run unit tests
+$ bundle exec rubocop      # lint
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+### Running integration tests
 
-## Contributing
+Integration tests under `spec/integration/` exercise a real Centrifugo server. They're skipped unless `CENTRIFUGO_API_URL` is set.
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/centrifugal/rubycent. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+```sh
+$ docker compose up -d
+$ CENTRIFUGO_API_URL=http://localhost:8000/api CENTRIFUGO_API_KEY=api_key bundle exec rspec spec/integration
+```
+
+### Testing across Faraday / JWT versions
+
+```sh
+$ bundle exec appraisal install         # generate gemfiles/*.gemfile.lock
+$ bundle exec appraisal rspec           # run the full matrix locally
+```
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+MIT — see [LICENSE.txt](LICENSE.txt).

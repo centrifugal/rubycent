@@ -1,20 +1,66 @@
-name: Ruby
+name: CI
 
-on: [push,pull_request]
+on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
+    name: RuboCop
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ruby-version: ['2.7', '3.3']
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: ${{ matrix.ruby-version }}
-    - name: Run the default task
-      run: |
-        bundle install
-        bundle exec rake
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      - run: bundle exec rubocop
+
+  test:
+    # Faraday 3 gemfiles exist under gemfiles/ for forward-readiness and can be
+    # run locally via `bundle exec appraisal rspec`. They're not wired into CI
+    # until Faraday 3 is published to RubyGems. The ruby-head cell tracks Ruby
+    # master (including future Ruby 4) and is marked experimental.
+    name: Test (Ruby ${{ matrix.ruby }} / ${{ matrix.gemfile }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.2', '3.3', '3.4', '4.0']
+        gemfile:
+          - gemfiles/faraday2_jwt2.gemfile
+          - gemfiles/faraday2_jwt3.gemfile
+        experimental: [false]
+        include:
+          - ruby: 'head'
+            gemfile: gemfiles/faraday2_jwt3.gemfile
+            experimental: true
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.gemfile }}
+      CENTRIFUGO_API_URL: http://localhost:8000/api
+      CENTRIFUGO_API_KEY: api_key
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Centrifugo
+        run: docker compose up -d
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Wait for Centrifugo
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf -X POST -H 'X-API-Key: api_key' -H 'Content-Type: application/json' \
+                 -d '{}' http://localhost:8000/api/info >/dev/null; then
+              echo "Centrifugo ready"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Centrifugo did not become healthy"
+          docker compose logs centrifugo
+          exit 1
+
+      - name: Run tests
+        run: bundle exec rspec
