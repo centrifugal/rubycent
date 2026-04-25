@@ -222,17 +222,14 @@ notary.issue_channel_token(
 
 ## Migrating from v3
 
-v4 is a breaking release. Expect to touch a few call sites.
+v4 changes some aspects of the library. We expect smooth migration for happy path though.
 
-- **Centrifugo v4+ is required.** v3 of this gem spoke the legacy `POST /api` JSON-RPC-style protocol; v4 uses the current per-method endpoints (`POST /api/publish`, `POST /api/broadcast`, …) and sends the API key as `X-API-Key` instead of `Authorization: apikey <key>`.
+- **Centrifugo v5+ is required.** v3 of this gem spoke the legacy `POST /api` JSON-RPC-style protocol; v4 uses the current per-method endpoints (`POST /api/publish`, `POST /api/broadcast`, …) and sends the API key as `X-API-Key` instead of `Authorization: apikey <key>`.
 - **Error handling is unchanged for the common case.** `Cent::ResponseError` still exists and is still raised when Centrifugo returns a top-level API error. Existing `rescue Cent::ResponseError => e` blocks using `e.code` / `e.message` keep working. The new additions are typed transport errors — `Cent::TimeoutError`, `Cent::NetworkError`, `Cent::TransportError`, `Cent::UnauthorizedError`, `Cent::DecodeError` — all subclassed under `Cent::Error`.
 - **Keyword arg rename**: `Cent::Notary#issue_channel_token(client:)` → `issue_channel_token(sub:)` to match Centrifugo's standard `sub` JWT claim.
-- **`unsubscribe` takes `user:`** now (was previously `user:` too, but is now validated and paired with `channel:`).
-- **Ruby 3.0+** is required (was 2.5+). Faraday 2 and Faraday 3 are both supported; JWT 2 and JWT 3 are both supported.
+- **Ruby 3.0+** is required (was 2.5+).
 - **New methods** added for common Centrifugo operations: `subscribe`, `refresh`, `history_remove`, `batch`.
 - **Richer kwargs** on existing methods (e.g. `publish` now accepts `tags`, `skip_history`, `idempotency_key`, `delta`, `version`, `version_epoch`, `b64data`; `history` accepts `limit`, `since`, `reverse`; `channels` accepts `pattern`).
-
-See `release_v4.0.0.md` for the full list of changes.
 
 ## Development
 
