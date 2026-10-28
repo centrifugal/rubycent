@@ -7,7 +7,7 @@ module Cent
   # type which decodes the request, calls a block and encodes its answer. Each
   # handler is a {Handler}: a Rack app, with a framework-free core.
   #
-  #   connect = Cent::Proxy::ConnectHandler.new do |req, http|
+  #   connect = Cent::Proxy::ConnectHandler.new(on_error: ->(_http, err) { logger.error(err) }) do |req, http|
   #     user = session_user(http.headers["cookie"])    # passed on with http_headers
   #     raise Cent::Proxy::Disconnect.new(4501, "unauthorized") unless user
   #
@@ -34,7 +34,8 @@ module Cent
   #   [4000, 4999] - [4500, 4999] to tell the client not to reconnect. Only the
   #   proxies which pass a ProxyError to the client honour it.
   # - Any other error, or one a proxy cannot carry, fails the request with HTTP
-  #   status 500, and is passed to +on_error+ for logging. Centrifugo then
+  #   status 500, and is passed to +on_error+ for logging - without +on_error+,
+  #   it is logged nowhere. Centrifugo then
   #   answers the client with its temporary internal error; for refresh and sub
   #   refresh it keeps the connection or subscription for another minute and
   #   asks again.
@@ -108,7 +109,8 @@ module Cent
     # @api private
     class ProxyHandler < Handler
       # @param on_error [#call, nil] told of every 500 and 400, with the
-      #   {HTTPRequest} and the error
+      #   {HTTPRequest} and the error. Pass one: without it, an error in the
+      #   block is answered with 500 and logged nowhere.
       # @param max_body [Integer] the largest request body read, in bytes
       def initialize(on_error: nil, max_body: DEFAULT_MAX_BODY, &) = super(max_body, on_error, &)
 

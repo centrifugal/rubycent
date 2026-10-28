@@ -6,7 +6,7 @@ module Cent
   # the JSON Web Key Set Centrifugo fetches. Each is a {Handler}: a Rack app,
   # with a framework-free core.
   #
-  #   conn = Cent::Endpoints::ConnectionToken.new do |req|
+  #   conn = Cent::Endpoints::ConnectionToken.new(on_error: ->(_http, err) { logger.error(err) }) do |req|
   #     user = session_user(req.raw)                     # the Rack env
   #     raise Cent::Endpoints::Unauthorized unless user
   #
@@ -18,7 +18,8 @@ module Cent
   # cause of another error - with 403, on which client SDKs stop asking, and
   # disconnect or unsubscribe; any other error with 500, which they retry. A
   # malformed request gets 400, a wrong method 405. +on_error+, when set, is
-  # told of every 500 and 400, with the request and the error.
+  # told of every 500 and 400, with the request and the error - without it, an
+  # error in the block is logged nowhere.
   module Endpoints
     # Bodies are read up to 1 MiB.
     MAX_BODY = 1 << 20
@@ -35,7 +36,8 @@ module Cent
     # @api private
     class Endpoint < Handler
       # @param on_error [#call, nil] told of every 500 and 400, with the
-      #   request and the error
+      #   request and the error. Pass one: without it, an error in the block is
+      #   answered with 500 and logged nowhere.
       def initialize(on_error: nil, &) = super(MAX_BODY, on_error, &)
 
       private

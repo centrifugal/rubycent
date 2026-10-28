@@ -89,7 +89,9 @@ the handler's block finds the user in the Rack env:
 # config/initializers/centrifugo.rb
 CENTRIFUGO_KEY = Cent::Token::Key.hmac(Rails.application.credentials.dig(:centrifugo, :token_secret))
 
-CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new do |http|
+REPORT = ->(_http, err) { Rails.error.report(err) }
+
+CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new(on_error: REPORT) do |http|
   user = http.raw["app.user"] or raise Cent::Endpoints::Unauthorized
   Cent::Token.connection(CENTRIFUGO_KEY, user: user.id.to_s, expires_at: 15.minutes.from_now)
 end
@@ -110,9 +112,33 @@ end
 post "centrifugo/connection_token", to: "centrifugo#connection_token"
 ```
 
-A handler which needs nothing of your app - a proxy Centrifugo calls on an
-internal network - is mounted as it is: `mount SUBSCRIBE_HANDLER, at:
-"/centrifugo/subscribe"`.
+A proxy handler, which Centrifugo calls on an internal network, is mounted as
+it is. Its block hands the request to a module of your app: the module is
+reloaded in development, where the initializer is not, and its methods can
+`return` early, which a block cannot:
+
+```ruby
+# config/initializers/centrifugo.rb
+SUBSCRIBE_HANDLER = Cent::Proxy::SubscribeHandler.new(on_error: REPORT) do |req, http|
+  CentrifugoProxy.subscribe(req, http)
+end
+
+# app/services/centrifugo_proxy.rb
+module CentrifugoProxy
+  def self.subscribe(req, _http)
+    return {} if req.channel.start_with?("public:")
+    raise Cent::Proxy::ProxyError.new(403, "permission denied") unless Room.readable_by?(req.user, req.channel)
+
+    { info: { "role" => Room.role(req.user, req.channel) } }
+  end
+end
+
+# config/routes.rb
+mount SUBSCRIBE_HANDLER, at: "/centrifugo/subscribe"
+```
+
+The module's methods are plain to test:
+`CentrifugoProxy.subscribe(Cent::Proxy::SubscribeRequest.new(user: "42", channel: "room:1"), nil)`.
 
 ## Payloads
 
@@ -440,6 +466,11 @@ end
 Any other server calls the framework-free core, `handle(method, headers, body)`,
 which returns a `Cent::HTTPResponse`.
 
+Pass every handler an `on_error:`, told of the request and the error whenever
+the handler answers 500 or 400. Without it, an error in your block is answered
+with 500 and logged nowhere: the handler catches it to answer Centrifugo, so it
+never reaches your framework's error reporting.
+
 ## Proxy
 
 `Cent::Proxy` is the backend side of Centrifugo's HTTP proxy, which calls your
@@ -447,17 +478,27 @@ application when a client connects, subscribes, publishes or makes an RPC
 call: a handler per proxy type, taking a block.
 
 ```ruby
-SUBSCRIBE_HANDLER = Cent::Proxy::SubscribeHandler.new(on_error: ->(_req, e) { Rails.error.report(e) }) do |req|
-  raise Cent::Proxy::ProxyError.new(403, "permission denied") unless can_read?(req.user, req.channel)
+REPORT = ->(_http, err) { logger.error(err) }
 
-  {}   # a Cent::Proxy::SubscribeResult, or a Hash of its fields
+SUBSCRIBE_HANDLER = Cent::Proxy::SubscribeHandler.new(on_error: REPORT) { |req, http| Proxy.subscribe(req, http) }
+
+module Proxy
+  # req: a Cent::Proxy::SubscribeRequest; http: the Cent::HTTPRequest, its
+  # headers those Centrifugo passed on.
+  def self.subscribe(req, _http)
+    raise Cent::Proxy::ProxyError.new(403, "permission denied") unless can_read?(req.user, req.channel)
+
+    {}   # a Cent::Proxy::SubscribeResult, or a Hash of its fields
+  end
 end
 ```
 
 Return a result to accept the request, raise `Cent::Proxy::ProxyError` to
 reject it with an error the client receives, or `Cent::Proxy::Disconnect` to
 close the client's connection; any other error fails the request, and goes to
-`on_error` to be logged. Keep proxy endpoints reachable by Centrifugo only:
+`on_error` to be logged - without `on_error`, nowhere. A block calling a method,
+as here, keeps the logic where it can `return` early and be tested alone; see
+[Rails](#rails) for where each part goes there. Keep proxy endpoints reachable by Centrifugo only:
 whoever can call them can claim to be any user.
 
 ## Tokens
@@ -470,7 +511,7 @@ the endpoints the `getToken` callbacks of client SDKs call:
 ```ruby
 KEY = Cent::Token::Key.hmac(ENV.fetch("CENTRIFUGO_TOKEN_SECRET"))   # client.token.hmac_secret_key
 
-CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new do |req|
+CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new(on_error: REPORT) do |req|
   user = session_user(req.raw)
   raise Cent::Endpoints::Unauthorized unless user   # 403: the client stops asking
 
@@ -550,7 +591,7 @@ and `Cent::Endpoints::SharedPollSignature` serves the endpoint a subscription's
 `getSignature` callback calls:
 
 ```ruby
-SIGNATURE = Cent::Endpoints::SharedPollSignature.new do |channel, keys, req|
+SIGNATURE = Cent::Endpoints::SharedPollSignature.new(on_error: REPORT) do |channel, keys, req|
   user = session_user(req.raw)
   allowed = readable_keys(user, channel, keys)   # the rest are revoked
   [allowed, Cent::SharedPoll.sign(SECRET, user: user.id.to_s, channel:, keys: allowed, expires_at: Time.now + 3600)]
