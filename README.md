@@ -82,35 +82,49 @@ class HistoryController < ApplicationController
 end
 ```
 
-The token endpoint and proxy handlers, as actions using your authentication -
-the handler's block finds the user in the Rack env:
+Token endpoints, as plain actions behind your authentication - the token
+functions are all you need from cent here:
 
 ```ruby
 # config/initializers/centrifugo.rb
 CENTRIFUGO_KEY = Cent::Token::Key.hmac(Rails.application.credentials.dig(:centrifugo, :token_secret))
 
-REPORT = ->(_http, err) { Rails.error.report(err) }
-
-CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new(on_error: REPORT) do |http|
-  user = http.raw["app.user"] or raise Cent::Endpoints::Unauthorized
-  Cent::Token.connection(CENTRIFUGO_KEY, user: user.id.to_s, expires_at: 15.minutes.from_now)
-end
-
 # app/controllers/centrifugo_controller.rb
 class CentrifugoController < ApplicationController
-  def connection_token = serve(CONNECTION_TOKEN)
+  # 403, not the 401 authenticate_user! answers: a client SDK stops asking only
+  # on 403, and retries anything else.
+  before_action { head :forbidden unless current_user }
+
+  def connection_token
+    token = Cent::Token.connection(CENTRIFUGO_KEY, user: current_user.id.to_s, expires_at: 15.minutes.from_now)
+    render_token(token)
+  end
+
+  def subscription_token
+    channel = params.require(:channel)
+    # 403 tells the client SDK to stop asking, and to unsubscribe.
+    return head :forbidden unless current_user.can_read?(channel)
+
+    render_token(Cent::Token.subscription(CENTRIFUGO_KEY, user: current_user.id.to_s, channel:,
+                                                          expires_at: 15.minutes.from_now))
+  end
 
   private
 
-  def serve(handler)
-    status, headers, body = handler.call(request.env.merge("app.user" => current_user))
-    render body: body.join, status:, content_type: headers["content-type"]
+  def render_token(token)
+    response.headers["Cache-Control"] = "no-store"   # a token is never cached
+    render json: { token: }
   end
 end
 
 # config/routes.rb
 post "centrifugo/connection_token", to: "centrifugo#connection_token"
+post "centrifugo/subscription_token", to: "centrifugo#subscription_token"
 ```
+
+A client SDK treats a 403 from a token endpoint as final - it disconnects, or
+unsubscribes - and retries anything else, a 401 or 500 included: a signed-out
+user's browser answered 401 would ask again and again.
 
 A proxy handler, which Centrifugo calls on an internal network, is mounted as
 it is. Its block hands the request to a module of your app: the module is
@@ -119,6 +133,8 @@ reloaded in development, where the initializer is not, and its methods can
 
 ```ruby
 # config/initializers/centrifugo.rb
+REPORT = ->(_http, err) { Rails.error.report(err) }
+
 SUBSCRIBE_HANDLER = Cent::Proxy::SubscribeHandler.new(on_error: REPORT) do |req, http|
   CentrifugoProxy.subscribe(req, http)
 end
@@ -448,20 +464,16 @@ mount CONNECT_HANDLER, at: "/centrifugo/connect"
 
 Each takes a block and calls it with what the request asks for, and with a
 `Cent::HTTPRequest`: the method, headers, query and the server's own request
-in `raw` - the Rack env. A Rack app runs outside your controllers, so its
-block sees the request's headers, not, say, your authentication. To use it,
-call the handler from an action of your own, and hand the block what it needs
-in the env:
+in `raw` - the Rack env. Mounted in Rails, a handler runs behind the app's
+middleware, so the env carries the session: for the connect proxy, with
+`Cookie` in Centrifugo's `http_headers`, Devise's user is
+`http.raw["warden"].user`.
 
-```ruby
-class CentrifugoController < ActionController::API
-  def connect
-    # The block finds the user in http.raw, the Rack env.
-    status, headers, body = CONNECT_HANDLER.call(request.env.merge("app.user" => current_user))
-    render body: body.join, status:, content_type: headers["content-type"]
-  end
-end
-```
+Proxy handlers are mounted in every framework: Centrifugo calls them, and the
+user is in the request. The endpoints client SDKs call - tokens, shared poll
+signatures - suit an app without its own authentication layer: plain Rack,
+Sinatra, Roda, a token service. In Rails, write those as controller actions
+calling `Cent::Token`: see [Rails](#rails).
 
 Any other server calls the framework-free core, `handle(method, headers, body)`,
 which returns a `Cent::HTTPResponse`.
@@ -506,7 +518,8 @@ whoever can call them can claim to be any user.
 `Cent::Token` issues the JWTs Centrifugo authenticates clients with -
 connection and subscription tokens, with Centrifugo's claims, signed with
 HMAC, RSA, ECDSA or Ed25519 from Ruby's OpenSSL - and `Cent::Endpoints` serves
-the endpoints the `getToken` callbacks of client SDKs call:
+the endpoints the `getToken` callbacks of client SDKs call, in a Rack app or
+Sinatra (in Rails, a controller action: see [Rails](#rails)):
 
 ```ruby
 KEY = Cent::Token::Key.hmac(ENV.fetch("CENTRIFUGO_TOKEN_SECRET"))   # client.token.hmac_secret_key
@@ -588,7 +601,8 @@ switch.
 Clients tracking keys of a [shared poll](https://centrifugal.dev/docs/server/shared_poll)
 channel need a signature from the backend. `Cent::SharedPoll.sign` makes one,
 and `Cent::Endpoints::SharedPollSignature` serves the endpoint a subscription's
-`getSignature` callback calls:
+`getSignature` callback calls - in Rails, an action answering
+`{signature:, keys:}` does the same:
 
 ```ruby
 SIGNATURE = Cent::Endpoints::SharedPollSignature.new(on_error: REPORT) do |channel, keys, req|
