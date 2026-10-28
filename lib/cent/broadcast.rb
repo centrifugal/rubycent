@@ -15,6 +15,8 @@ module Cent
   #   @return [Integer] how many times the channel was sent: more than 1 when
   #     broadcast_with_retry retried it
   class ChannelResult < Data.define(:channel, :result, :error, :attempts)
+    include Message
+
     def initialize(channel:, result: nil, error: nil, attempts: 0) = super
   end
 
@@ -37,6 +39,8 @@ module Cent
   #     replied for every channel, the failed ones included; false when it
   #     failed as a whole
   class BroadcastResult < Data.define(:channels, :idempotency_key, :attempts, :replied)
+    include Message
+
     def initialize(channels: [], idempotency_key: "", attempts: 0, replied: false) = super
 
     # The channels which did not get the publication, with their errors, in the
@@ -107,5 +111,7 @@ module Cent
   #     would return it if it stopped now
   # @!attribute [r] idempotency_key
   #   @return [String] the key every attempt is sent with
-  class BroadcastAttempt < Data.define(:attempt, :error, :retry, :result, :idempotency_key); end
+  class BroadcastAttempt < Data.define(:attempt, :error, :retry, :result, :idempotency_key)
+    include Message
+  end
 end

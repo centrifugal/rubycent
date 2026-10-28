@@ -256,7 +256,9 @@ module Cent
   #   @return [Error] the error its pending raises: an ApiError, or a
   #     BroadcastFailedChannelsError for a broadcast which failed in one or more
   #     channels
-  class FailedCommand < Data.define(:index, :method, :error); end
+  class FailedCommand < Data.define(:index, :method, :error)
+    include Message
+  end
 
   # A batch in which one or more commands failed, up to all of them. Every
   # command got its own reply: each pending holds its outcome. {#result} is the

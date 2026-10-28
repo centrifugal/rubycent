@@ -10,6 +10,8 @@ module Cent
   # @!attribute [r] epoch
   #   @return [String] The epoch of the channel history stream.
   class PublishResult < Data.define(:offset, :epoch)
+    include Message
+
     def initialize(offset: 0, epoch: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -56,6 +58,8 @@ module Cent
   # @!attribute [r] nodes
   #   @return [Array<FilterNode>] The child nodes of a logical operation.
   class FilterNode < Data.define(:op, :key, :cmp, :val, :vals, :nodes)
+    include Message
+
     def initialize(
       op: "",
       key: "",
@@ -112,6 +116,8 @@ module Cent
   #   @return [Boolean, nil] Overrides the force_push_join_leave channel
   #     option.
   class SubscribeOptionOverride < Data.define(:presence, :join_leave, :force_recovery, :force_positioning, :force_push_join_leave)
+    include Message
+
     def initialize(
       presence: nil,
       join_leave: nil,
@@ -152,6 +158,8 @@ module Cent
 
   # SubscribeResult is the result of a subscribe call. Empty at the moment.
   class SubscribeResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -171,6 +179,8 @@ module Cent
   # UnsubscribeResult is the result of an unsubscribe call. Empty at the
   # moment.
   class UnsubscribeResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -194,6 +204,8 @@ module Cent
   # @!attribute [r] reason
   #   @return [String] The disconnect reason.
   class Disconnect < Data.define(:code, :reason)
+    include Message
+
     def initialize(code: 0, reason: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -220,6 +232,8 @@ module Cent
 
   # DisconnectResult is the result of a disconnect call. Empty at the moment.
   class DisconnectResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -247,6 +261,8 @@ module Cent
   # @!attribute [r] chan_info
   #   @return [Object, nil] Optional channel info.
   class ClientInfo < Data.define(:user, :client, :conn_info, :chan_info)
+    include Message
+
     def initialize(
       user: "",
       client: "",
@@ -287,6 +303,8 @@ module Cent
   # @!attribute [r] presence
   #   @return [Hash{String => ClientInfo}] Maps client ID to information about the client.
   class PresenceResult < Data.define(:presence)
+    include Message
+
     def initialize(presence: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -316,6 +334,8 @@ module Cent
   # @!attribute [r] num_users
   #   @return [Integer] The number of unique users in the channel.
   class PresenceStatsResult < Data.define(:num_clients, :num_users)
+    include Message
+
     def initialize(num_clients: 0, num_users: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -347,6 +367,8 @@ module Cent
   # @!attribute [r] epoch
   #   @return [String] The stream epoch.
   class StreamPosition < Data.define(:offset, :epoch)
+    include Message
+
     def initialize(offset: 0, epoch: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -382,6 +404,8 @@ module Cent
   # @!attribute [r] tags
   #   @return [Hash{String => String}] The publication tags.
   class Publication < Data.define(:data, :info, :offset, :tags)
+    include Message
+
     def initialize(
       data: nil,
       info: nil,
@@ -426,6 +450,8 @@ module Cent
   # @!attribute [r] offset
   #   @return [Integer] The top offset of the history stream.
   class HistoryResult < Data.define(:publications, :epoch, :offset)
+    include Message
+
     def initialize(publications: [], epoch: "", offset: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -455,6 +481,8 @@ module Cent
   # HistoryRemoveResult is the result of a history remove call. Empty at the
   # moment.
   class HistoryRemoveResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -476,6 +504,8 @@ module Cent
   # @!attribute [r] nodes
   #   @return [Array<NodeResult>] Information about all nodes of the cluster.
   class InfoResult < Data.define(:nodes)
+    include Message
+
     def initialize(nodes: []) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -500,6 +530,8 @@ module Cent
 
   # RefreshResult is the result of a refresh call. Empty at the moment.
   class RefreshResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -540,6 +572,8 @@ module Cent
   # @!attribute [r] num_subs
   #   @return [Integer] The number of subscriptions on the node.
   class NodeResult < Data.define(:uid, :name, :version, :num_clients, :num_users, :num_channels, :uptime, :metrics, :process, :num_subs)
+    include Message
+
     def initialize(
       uid: "",
       name: "",
@@ -600,6 +634,8 @@ module Cent
   # @!attribute [r] items
   #   @return [Hash{String => Float}] Maps metric name to value.
   class Metrics < Data.define(:interval, :items)
+    include Message
+
     def initialize(interval: 0.0, items: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -631,6 +667,8 @@ module Cent
   # @!attribute [r] rss
   #   @return [Integer] The resident set size of the process in bytes.
   class Process < Data.define(:cpu, :rss)
+    include Message
+
     def initialize(cpu: 0.0, rss: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -660,6 +698,8 @@ module Cent
   # @!attribute [r] channels
   #   @return [Hash{String => ChannelInfo}] Maps channel name to information about the channel.
   class ChannelsResult < Data.define(:channels)
+    include Message
+
     def initialize(channels: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -687,6 +727,8 @@ module Cent
   # @!attribute [r] num_clients
   #   @return [Integer] The number of connections subscribed to the channel.
   class ChannelInfo < Data.define(:num_clients)
+    include Message
+
     def initialize(num_clients: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -715,6 +757,8 @@ module Cent
   # @!attribute [r] connections
   #   @return [Hash{String => ConnectionInfo}] Maps client ID to information about the connection.
   class ConnectionsResult < Data.define(:connections)
+    include Message
+
     def initialize(connections: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -762,6 +806,8 @@ module Cent
   # @!attribute [r] labels
   #   @return [Hash{String => String}] The client labels attached to the connection.
   class ConnectionInfo < Data.define(:app_name, :app_version, :transport, :protocol, :user, :state, :connected_at_ms, :ping_pong_latency_ms, :labels)
+    include Message
+
     def initialize(
       app_name: "",
       app_version: "",
@@ -829,6 +875,8 @@ module Cent
   #     connection token is visible to the user owning the token, though: it
   #     must not hold anything that user must not see.
   class ConnectionState < Data.define(:channels, :connection_token, :subscription_tokens, :meta)
+    include Message
+
     def initialize(
       channels: {},
       connection_token: nil,
@@ -871,6 +919,8 @@ module Cent
   #   @return [Integer] The source of the channel subscription (for example,
   #     subscription token, subscribe proxy or server API).
   class ChannelContext < Data.define(:source)
+    include Message
+
     def initialize(source: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -901,6 +951,8 @@ module Cent
   # @!attribute [r] issued_at
   #   @return [Integer] The Unix time in seconds when the token was issued.
   class ConnectionTokenInfo < Data.define(:uid, :issued_at)
+    include Message
+
     def initialize(uid: "", issued_at: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -933,6 +985,8 @@ module Cent
   # @!attribute [r] issued_at
   #   @return [Integer] The Unix time in seconds when the token was issued.
   class SubscriptionTokenInfo < Data.define(:uid, :issued_at)
+    include Message
+
     def initialize(uid: "", issued_at: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -960,6 +1014,8 @@ module Cent
   # UpdateUserStatusResult is the result of an update user status call. Empty
   # at the moment. Centrifugo PRO only.
   class UpdateUserStatusResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -982,6 +1038,8 @@ module Cent
   # @!attribute [r] statuses
   #   @return [Array<UserStatus>] The statuses of the requested users, in the same order.
   class GetUserStatusResult < Data.define(:statuses)
+    include Message
+
     def initialize(statuses: []) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1017,6 +1075,8 @@ module Cent
   #   @return [String] The custom state set with UpdateUserStatusRequest.state, if
   #     any.
   class UserStatus < Data.define(:user, :active, :online, :state)
+    include Message
+
     def initialize(
       user: "",
       active: 0,
@@ -1055,6 +1115,8 @@ module Cent
   # DeleteUserStatusResult is the result of a delete user status call. Empty
   # at the moment. Centrifugo PRO only.
   class DeleteUserStatusResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1074,6 +1136,8 @@ module Cent
   # BlockUserResult is the result of a block user call. Empty at the moment.
   # Centrifugo PRO only.
   class BlockUserResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1093,6 +1157,8 @@ module Cent
   # UnblockUserResult is the result of an unblock user call. Empty at the
   # moment. Centrifugo PRO only.
   class UnblockUserResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1112,6 +1178,8 @@ module Cent
   # RevokeTokenResult is the result of a revoke token call. Empty at the
   # moment. Centrifugo PRO only.
   class RevokeTokenResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1131,6 +1199,8 @@ module Cent
   # InvalidateUserTokensResult is the result of an invalidate user tokens
   # call. Empty at the moment. Centrifugo PRO only.
   class InvalidateUserTokensResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1152,6 +1222,8 @@ module Cent
   # @!attribute [r] user
   #   @return [String] The user ID to set. Required.
   class DeviceUserUpdate < Data.define(:user)
+    include Message
+
     def initialize(user: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1179,6 +1251,8 @@ module Cent
   # @!attribute [r] timezone
   #   @return [String] The IANA time zone to set. Required.
   class DeviceTimezoneUpdate < Data.define(:timezone)
+    include Message
+
     def initialize(timezone: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1206,6 +1280,8 @@ module Cent
   # @!attribute [r] locale
   #   @return [String] The locale to set. Required.
   class DeviceLocaleUpdate < Data.define(:locale)
+    include Message
+
     def initialize(locale: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1233,6 +1309,8 @@ module Cent
   # @!attribute [r] meta
   #   @return [Hash{String => String}] The meta to set. Required.
   class DeviceMetaUpdate < Data.define(:meta)
+    include Message
+
     def initialize(meta: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1262,6 +1340,8 @@ module Cent
   # @!attribute [r] topics
   #   @return [Array<String>] The topics for the operation.
   class DeviceTopicsUpdate < Data.define(:op, :topics)
+    include Message
+
     def initialize(op: "", topics: []) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1299,6 +1379,8 @@ module Cent
   # @!attribute [r] platforms
   #   @return [Array<String>] Selects devices by platform.
   class DeviceFilter < Data.define(:ids, :users, :topics, :providers, :platforms)
+    include Message
+
     def initialize(
       ids: [],
       users: [],
@@ -1352,6 +1434,8 @@ module Cent
   # @!attribute [r] topic_prefix
   #   @return [String] Selects by topic prefix.
   class DeviceTopicFilter < Data.define(:device_ids, :device_providers, :device_platforms, :device_users, :topics, :topic_prefix)
+    include Message
+
     def initialize(
       device_ids: [],
       device_providers: [],
@@ -1402,6 +1486,8 @@ module Cent
   # @!attribute [r] topic_prefix
   #   @return [String] Selects by topic prefix.
   class UserTopicFilter < Data.define(:users, :topics, :topic_prefix)
+    include Message
+
     def initialize(users: [], topics: [], topic_prefix: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1434,6 +1520,8 @@ module Cent
   # @!attribute [r] id
   #   @return [String] The ID of the registered or updated device.
   class DeviceRegisterResult < Data.define(:id)
+    include Message
+
     def initialize(id: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1459,6 +1547,8 @@ module Cent
   # DeviceUpdateResult is the result of a device update call. Empty at the
   # moment. Centrifugo PRO only.
   class DeviceUpdateResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1478,6 +1568,8 @@ module Cent
   # DeviceRemoveResult is the result of a device remove call. Empty at the
   # moment. Centrifugo PRO only.
   class DeviceRemoveResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1506,6 +1598,8 @@ module Cent
   #   @return [Integer] The total count for the filter, if include_total_count
   #     was set.
   class DeviceListResult < Data.define(:items, :next_cursor, :total_count)
+    include Message
+
     def initialize(items: [], next_cursor: "", total_count: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1564,6 +1658,8 @@ module Cent
   #   @return [String] The Web Push subscription keys JSON ({p256dh, auth}).
   #     Only set if include_webpush_keys was requested.
   class Device < Data.define(:id, :platform, :provider, :token, :user, :created_at, :updated_at, :meta, :topics, :timezone, :locale, :webpush_keys)
+    include Message
+
     def initialize(
       id: "",
       platform: "",
@@ -1635,6 +1731,8 @@ module Cent
   #   @return [Integer] The total count for the filter, if include_total_count
   #     was set.
   class DeviceTopicListResult < Data.define(:items, :next_cursor, :total_count)
+    include Message
+
     def initialize(items: [], next_cursor: "", total_count: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1670,6 +1768,8 @@ module Cent
   # @!attribute [r] device
   #   @return [Device, nil] The device. Only set if include_device was requested.
   class DeviceTopic < Data.define(:id, :topic, :device)
+    include Message
+
     def initialize(id: "", topic: "", device: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1708,6 +1808,8 @@ module Cent
   #   @return [Integer] The total count for the filter, if include_total_count
   #     was set.
   class UserTopicListResult < Data.define(:items, :next_cursor, :total_count)
+    include Message
+
     def initialize(items: [], next_cursor: "", total_count: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1737,6 +1839,8 @@ module Cent
   # DeviceTopicUpdateResult is the result of a device topic update call.
   # Empty at the moment. Centrifugo PRO only.
   class DeviceTopicUpdateResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1756,6 +1860,8 @@ module Cent
   # UserTopicUpdateResult is the result of a user topic update call. Empty at
   # the moment. Centrifugo PRO only.
   class UserTopicUpdateResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1781,6 +1887,8 @@ module Cent
   # @!attribute [r] topic
   #   @return [String] The topic.
   class UserTopic < Data.define(:id, :user, :topic)
+    include Message
+
     def initialize(id: "", user: "", topic: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1831,6 +1939,8 @@ module Cent
   #   @return [Array<String>] Sends to a list of raw Web Push subscriptions, each a
   #     PushSubscription JSON string.
   class PushRecipient < Data.define(:filter, :fcm_tokens, :fcm_topic, :fcm_condition, :hms_tokens, :hms_topic, :hms_condition, :apns_tokens, :webpush_tokens)
+    include Message
+
     def initialize(
       filter: nil,
       fcm_tokens: [],
@@ -1896,6 +2006,8 @@ module Cent
   #   @return [Integer] The Unix time in seconds when Centrifugo stops trying to
   #     send the notification. Not related to the providers' TTL fields.
   class PushNotification < Data.define(:fcm, :hms, :apns, :webpush, :expire_at)
+    include Message
+
     def initialize(
       fcm: nil,
       hms: nil,
@@ -1939,6 +2051,8 @@ module Cent
   # @!attribute [r] message
   #   @return [Object, nil] The FCM Message object as JSON. Required.
   class FcmPushNotification < Data.define(:message)
+    include Message
+
     def initialize(message: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1966,6 +2080,8 @@ module Cent
   # @!attribute [r] message
   #   @return [Object, nil] The HMS Message object as JSON. Required.
   class HmsPushNotification < Data.define(:message)
+    include Message
+
     def initialize(message: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1995,6 +2111,8 @@ module Cent
   # @!attribute [r] payload
   #   @return [Object, nil] The APNs payload as JSON. Required.
   class ApnsPushNotification < Data.define(:headers, :payload)
+    include Message
+
     def initialize(headers: {}, payload: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2029,6 +2147,8 @@ module Cent
   #   @return [Object, nil] The JSON payload delivered to the browser service worker.
   #     Required.
   class WebPushPushNotification < Data.define(:headers, :payload)
+    include Message
+
     def initialize(headers: {}, payload: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2059,6 +2179,8 @@ module Cent
   # @!attribute [r] translations
   #   @return [Hash{String => String}] Maps variable name to value for the language/locale.
   class PushLocalization < Data.define(:translations)
+    include Message
+
     def initialize(translations: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2089,6 +2211,8 @@ module Cent
   # @!attribute [r] time_limit
   #   @return [PushTimeLimitStrategy, nil] Sets a time limit policy based on the device timezone.
   class PushLimitStrategy < Data.define(:rate_limit, :time_limit)
+    include Message
+
     def initialize(rate_limit: nil, time_limit: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2126,6 +2250,8 @@ module Cent
   #   @return [Boolean] Sends the push immediately if the device timezone is
   #     not set. By default such pushes are dropped.
   class PushTimeLimitStrategy < Data.define(:send_after_time, :send_before_time, :no_tz_send_now)
+    include Message
+
     def initialize(send_after_time: "", send_before_time: "", no_tz_send_now: false) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2163,6 +2289,8 @@ module Cent
   #   @return [Boolean] Drops a rate limited push instead of queuing it
   #     for later.
   class PushRateLimitStrategy < Data.define(:key, :policies, :drop_if_rate_limited)
+    include Message
+
     def initialize(key: "", policies: [], drop_if_rate_limited: false) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2196,6 +2324,8 @@ module Cent
   # @!attribute [r] interval_ms
   #   @return [Integer] The interval in milliseconds. Required.
   class RateLimitPolicy < Data.define(:rate, :interval_ms)
+    include Message
+
     def initialize(rate: 0, interval_ms: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2227,6 +2357,8 @@ module Cent
   #   @return [String] The unique identifier of the send request (not a provider
   #     message ID). Matches the request uid if it was set.
   class SendPushNotificationResult < Data.define(:uid)
+    include Message
+
     def initialize(uid: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2252,6 +2384,8 @@ module Cent
   # UpdatePushStatusResult is the result of an update push status call.
   # Empty at the moment. Centrifugo PRO only.
   class UpdatePushStatusResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -2271,6 +2405,8 @@ module Cent
   # CancelPushResult is the result of a cancel push call. Empty at the
   # moment. Centrifugo PRO only.
   class CancelPushResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -2300,6 +2436,8 @@ module Cent
   #   @return [String] Explains why the publish was suppressed, for example
   #     "idempotency", "version", "key_exists" or "key_not_found".
   class MapPublishResult < Data.define(:offset, :epoch, :suppressed, :suppress_reason)
+    include Message
+
     def initialize(
       offset: 0,
       epoch: "",
@@ -2348,6 +2486,8 @@ module Cent
   #   @return [String] Explains why the removal was suppressed, for example
   #     "idempotency" or "key_not_found".
   class MapRemoveResult < Data.define(:offset, :epoch, :suppressed, :suppress_reason)
+    include Message
+
     def initialize(
       offset: 0,
       epoch: "",
@@ -2395,6 +2535,8 @@ module Cent
   #   @return [String] The cursor of the next page. Empty if there are no more
   #     entries.
   class MapReadStateResult < Data.define(:entries, :offset, :epoch, :cursor)
+    include Message
+
     def initialize(
       entries: [],
       offset: 0,
@@ -2447,6 +2589,8 @@ module Cent
   # @!attribute [r] time
   #   @return [Integer] The time of the publication as Unix milliseconds, if known.
   class MapEntry < Data.define(:key, :data, :tags, :offset, :score, :removed, :time)
+    include Message
+
     def initialize(
       key: "",
       data: nil,
@@ -2500,6 +2644,8 @@ module Cent
   # @!attribute [r] epoch
   #   @return [String] The epoch of the channel stream.
   class MapReadStreamResult < Data.define(:entries, :offset, :epoch)
+    include Message
+
     def initialize(entries: [], offset: 0, epoch: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2531,6 +2677,8 @@ module Cent
   # @!attribute [r] num_keys
   #   @return [Integer] The number of entries in the channel state.
   class MapStatsResult < Data.define(:num_keys)
+    include Message
+
     def initialize(num_keys: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
@@ -2555,6 +2703,8 @@ module Cent
 
   # MapClearResult is the result of a map clear call. Empty at the moment.
   class MapClearResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -2574,6 +2724,8 @@ module Cent
   # SharedPollPublishResult is the result of a shared poll publish call.
   # Empty at the moment.
   class SharedPollPublishResult < Data.define
+    include Message
+
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private

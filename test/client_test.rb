@@ -666,4 +666,33 @@ class ClientTest < Minitest::Test
                  assert_raises(Cent::InvalidRequestError) { Cent::Command.publish(data: 1) }.message
     assert_raises(Cent::InvalidRequestError) { Cent::Command.broadcast(channels: ["a"], data: Float::NAN) }
   end
+
+  # Results as Hashes and JSON.
+
+  def test_results_convert_to_hashes_and_json_deeply
+    @fake.on("history",
+             [200, {},
+              '{"result":{"publications":[{"data":{"text":"hi"},"offset":1,"info":{"user":"u"}}],"epoch":"e"}}'])
+    res = @client.history(channel: "c")
+    h = res.to_h
+
+    assert_equal({ "text" => "hi" }, h[:publications][0][:data])
+    assert_equal "u", h[:publications][0][:info][:user]
+    info = { "user" => "u", "client" => "", "conn_info" => nil, "chan_info" => nil }
+    pub = { "data" => { "text" => "hi" }, "info" => info, "offset" => 1, "tags" => {} }
+
+    assert_equal({ "publications" => [pub], "epoch" => "e", "offset" => 0 }, JSON.parse(res.to_json))
+    assert_equal res.to_json, JSON.generate(res)
+    assert_equal({ "r" => JSON.parse(res.to_json) }, JSON.parse(JSON.generate({ r: res })))
+    # The block form is Data's own.
+    assert_equal %w[publications epoch offset], res.to_h { |k, v| [k.to_s, v] }.keys
+  end
+
+  def test_errors_in_results_are_their_messages_in_json
+    err = assert_raises(Cent::BroadcastFailedChannelsError) { @client.broadcast(channels: %w[a bad:b], data: 1) }
+    channels = JSON.parse(err.result.to_json)["channels"]
+
+    assert_equal([nil, "unknown channel (code 102)"], channels.map { it["error"] })
+    assert_instance_of Cent::UnknownChannelError, err.result.to_h[:channels][1][:error]
+  end
 end

@@ -27,7 +27,9 @@ module Cent
   #     HTTP status, a reply which is not Centrifugo's, a request refused before
   #     sending - or, in the transport error mode, the error of its one command.
   #     nil when Centrifugo's reply was read.
-  class RequestInfo < Data.define(:method, :commands, :failed, :auto_batch, :duration, :status_code, :error); end
+  class RequestInfo < Data.define(:method, :commands, :failed, :auto_batch, :duration, :status_code, :error)
+    include Message
+  end
 
   # Calls Centrifugo's HTTP server API. Safe for concurrent use from threads and
   # fibers, and meant to be created once and shared:

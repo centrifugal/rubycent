@@ -47,6 +47,73 @@ for concurrent use from threads, and keeps its connections to Centrifugo alive
 between calls. Under a fiber scheduler - Async, Falcon - calls wait without
 blocking other fibers.
 
+A result converts to a Hash and to JSON whole, nested results included:
+`res.to_h`, `res.to_json`, `render json: res`.
+
+## Rails
+
+The client, configured once in an initializer and closed when the process
+exits, so that calls in progress finish:
+
+```ruby
+# config/initializers/centrifugo.rb
+CENTRIFUGO = Cent::Client.new(
+  api_endpoint: ENV.fetch("CENTRIFUGO_API_ENDPOINT", "http://localhost:8000/api"),
+  api_key: Rails.application.credentials.dig(:centrifugo, :api_key),
+  request_timeout: 5
+)
+at_exit { CENTRIFUGO.close(timeout: 5) }
+```
+
+Publishing from a model or a job, and rendering a result:
+
+```ruby
+class Message < ApplicationRecord
+  after_create_commit do
+    CENTRIFUGO.publish(channel: "chat:#{room_id}", data: { id:, text:, user: user.name },
+                       idempotency_key: "message-#{id}")
+  end
+end
+
+class HistoryController < ApplicationController
+  def show
+    render json: CENTRIFUGO.history(channel: "chat:#{params[:room_id]}", limit: 50, reverse: true)
+  end
+end
+```
+
+The token endpoint and proxy handlers, as actions using your authentication -
+the handler's block finds the user in the Rack env:
+
+```ruby
+# config/initializers/centrifugo.rb
+CENTRIFUGO_KEY = Cent::Token::Key.hmac(Rails.application.credentials.dig(:centrifugo, :token_secret))
+
+CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new do |http|
+  user = http.raw["app.user"] or raise Cent::Endpoints::Unauthorized
+  Cent::Token.connection(CENTRIFUGO_KEY, user: user.id.to_s, expires_at: 15.minutes.from_now)
+end
+
+# app/controllers/centrifugo_controller.rb
+class CentrifugoController < ApplicationController
+  def connection_token = serve(CONNECTION_TOKEN)
+
+  private
+
+  def serve(handler)
+    status, headers, body = handler.call(request.env.merge("app.user" => current_user))
+    render body: body.join, status:, content_type: headers["content-type"]
+  end
+end
+
+# config/routes.rb
+post "centrifugo/connection_token", to: "centrifugo#connection_token"
+```
+
+A handler which needs nothing of your app - a proxy Centrifugo calls on an
+internal network - is mounted as it is: `mount SUBSCRIBE_HANDLER, at:
+"/centrifugo/subscribe"`.
+
 ## Payloads
 
 `data`, `info`, `meta` and the other payloads are JSON values, given as the
@@ -61,6 +128,11 @@ pub = client.history(channel: "news", limit: 1).publications.first
 pub.data["text"]
 client.publish(channel: "archive", data: pub.data)   # exactly the same JSON value
 ```
+
+A payload from a reply has String keys, as JSON has: `pub.data["text"]`, not
+`pub.data[:text]`, so that it goes back out as the same JSON value. To read it
+with Symbols, convert a copy - `pub.data.transform_keys(&:to_sym)`, or
+`pub.data.with_indifferent_access` in Rails - and send the original.
 
 A String is a JSON string. JSON you already have, or encode with rules of your
 own - dates, decimals, a faster encoder - goes in a `JSON::Fragment`, sent as it

@@ -12,6 +12,8 @@ module Cent
   #   @return [Array<FailedCommand>] the commands which failed, with their
   #     errors, in the order they were added
   class BatchResult < Data.define(:replied, :failed)
+    include Message
+
     # @return [Boolean] alias of replied
     def replied? = replied
   end

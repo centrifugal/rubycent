@@ -15,6 +15,7 @@ module Cent
 end
 
 require_relative "cent/version"
+require_relative "cent/message"
 require_relative "cent/errors"
 require_relative "cent/payload"
 require_relative "cent/wire"

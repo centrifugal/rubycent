@@ -209,6 +209,7 @@ def emit_message(out, m, indent, protocol)
   out << comment(lines, indent)
   members = m.fields.map { ":#{it.name}" }.join(", ")
   out << "#{indent}class #{m.name} < Data.define#{"(#{members})" unless members.empty?}\n"
+  out << "#{indent}  include Message\n\n"
   unless m.fields.empty?
     params = m.fields.map { "#{it.name}: #{default(it)}" }
     sig = signature("#{indent}  ", "initialize", params)

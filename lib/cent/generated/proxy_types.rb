@@ -23,6 +23,8 @@ module Cent
     # @!attribute [r] nodes
     #   @return [Array<FilterNode>] The operands of a logical node.
     class FilterNode < Data.define(:op, :key, :cmp, :val, :vals, :nodes)
+      include Message
+
       def initialize(
         op: "",
         key: "",
@@ -89,6 +91,8 @@ module Cent
     #     to. The backend checks its permissions and returns the allowed ones in
     #     ConnectResult.channels or ConnectResult.subs.
     class ConnectRequest < Data.define(:client, :transport, :protocol, :encoding, :data, :b64data, :name, :version, :channels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -171,6 +175,8 @@ module Cent
     #     applies in cache recovery mode, where it delivers the latest publication on
     #     (re)subscribe.
     class SubscribeOptions < Data.define(:expire_at, :info, :b64info, :data, :b64data, :override, :server_tags_filter, :cache_recover)
+      include Message
+
       def initialize(
         expire_at: 0,
         info: nil,
@@ -251,6 +257,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — client labels attached to the centrifuge.Client by Centrifugo PRO.
     #     Parsed by OSS but not used (OSS does not populate centrifuge.ConnectReply.Labels).
     class ConnectResult < Data.define(:user, :expire_at, :info, :b64info, :data, :b64data, :channels, :subs, :meta, :caps, :labels)
+      include Message
+
       def initialize(
         user: "",
         expire_at: 0,
@@ -320,6 +328,8 @@ module Cent
     #   @return [String] How channels are matched: empty for exact names, "wildcard" or
     #     "regex".
     class ChannelsCapability < Data.define(:channels, :allow, :match)
+      include Message
+
       def initialize(channels: [], allow: [], match: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -365,6 +375,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class RefreshRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -424,6 +436,8 @@ module Cent
     # @!attribute [r] caps
     #   @return [Array<ChannelsCapability>] Replace the connection's capabilities. Centrifugo PRO only.
     class RefreshResult < Data.define(:expired, :expire_at, :info, :b64info, :meta, :caps)
+      include Message
+
       def initialize(
         expired: false,
         expire_at: 0,
@@ -492,6 +506,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class SubscribeRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :channel, :token, :meta, :data, :b64data, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -563,6 +579,8 @@ module Cent
     #   @return [Boolean, nil] Overrides the namespace's force_push_join_leave
     #     option.
     class SubscribeOptionOverride < Data.define(:presence, :join_leave, :force_recovery, :force_positioning, :force_push_join_leave)
+      include Message
+
       def initialize(
         presence: nil,
         join_leave: nil,
@@ -627,6 +645,8 @@ module Cent
     #   @return [FilterNode, nil] Makes the subscription receive only publications
     #     whose tags match it. Centrifugo PRO only.
     class SubscribeResult < Data.define(:expire_at, :info, :b64info, :data, :b64data, :override, :allow, :server_tags_filter)
+      include Message
+
       def initialize(
         expire_at: 0,
         info: nil,
@@ -699,6 +719,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class PublishRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :channel, :data, :b64data, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -778,6 +800,8 @@ module Cent
     #   @return [String] Scopes version, for versions which may start over - when
     #     they come from a system which can lose its state, say.
     class PublishResult < Data.define(:data, :b64data, :skip_history, :tags, :idempotency_key, :delta, :version, :version_epoch)
+      include Message
+
       def initialize(
         data: nil,
         b64data: "",
@@ -852,6 +876,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class MapPublishRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :channel, :key, :data, :b64data, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -941,6 +967,8 @@ module Cent
     # @!attribute [r] version_epoch
     #   @return [String] Scopes version, for versions which may start over.
     class MapPublishResult < Data.define(:key, :data, :b64data, :tags, :score, :key_mode, :stream_data, :b64stream_data, :idempotency_key, :delta, :version, :version_epoch)
+      include Message
+
       def initialize(
         key: "",
         data: nil,
@@ -1023,6 +1051,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class MapRemoveRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :channel, :key, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -1085,6 +1115,8 @@ module Cent
     #   @return [String] Makes the removal idempotent within the broker's
     #     idempotency window.
     class MapRemoveResult < Data.define(:key, :tags, :idempotency_key)
+      include Message
+
       def initialize(key: "", tags: {}, idempotency_key: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1136,6 +1168,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class RPCRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :method, :data, :b64data, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -1196,6 +1230,8 @@ module Cent
     # @!attribute [r] b64data
     #   @return [String] Data in base64, for binary data.
     class RPCResult < Data.define(:data, :b64data)
+      include Message
+
       def initialize(data: nil, b64data: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1241,6 +1277,8 @@ module Cent
     #   @return [Hash{String => String}] PRO only — connection labels attached to the originating centrifuge.Client.
     #     Centrifugo PRO always populates this from Client.Labels() (no opt-in toggle).
     class SubRefreshRequest < Data.define(:client, :transport, :protocol, :encoding, :user, :channel, :meta, :labels)
+      include Message
+
       def initialize(
         client: "",
         transport: "",
@@ -1303,6 +1341,8 @@ module Cent
     #   @return [FilterNode, nil] When set, replaces the server-side tags filter of the
     #     subscription (Centrifugo PRO). When not set the filter is kept as it is.
     class SubRefreshResult < Data.define(:expired, :expire_at, :info, :b64info, :server_tags_filter)
+      include Message
+
       def initialize(
         expired: false,
         expire_at: 0,
@@ -1348,6 +1388,8 @@ module Cent
     # @!attribute [r] channel
     #   @return [String] The channel whose cache is empty.
     class NotifyCacheEmptyRequest < Data.define(:channel)
+      include Message
+
       def initialize(channel: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1376,6 +1418,8 @@ module Cent
     #   @return [Boolean] Tells Centrifugo that the backend published into the channel,
     #     so that it tries to recover the state once more.
     class NotifyCacheEmptyResult < Data.define(:populated)
+      include Message
+
       def initialize(populated: false) = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1404,6 +1448,8 @@ module Cent
     # @!attribute [r] events
     #   @return [Array<ChannelEvent>] The events which happened, in channels with presence.
     class NotifyChannelStateRequest < Data.define(:events)
+      include Message
+
       def initialize(events: []) = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1437,6 +1483,8 @@ module Cent
     #     when it lost its last one. More types may come; the field is a string,
     #     not an enum, for JSON interoperability.
     class ChannelEvent < Data.define(:time_ms, :channel, :type)
+      include Message
+
       def initialize(time_ms: 0, channel: "", type: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1465,6 +1513,8 @@ module Cent
 
     # NotifyChannelStateResult is the NotifyChannelStateResult message of the Centrifugo proxy protocol.
     class NotifyChannelStateResult < Data.define
+      include Message
+
       # The message as Centrifugo reads it, fields at their zero value left out.
       #
       # @api private
@@ -1489,6 +1539,8 @@ module Cent
     # @!attribute [r] items
     #   @return [Array<SharedPollRefreshItem>] The tracked items to refresh.
     class SharedPollRefreshRequest < Data.define(:channel, :items)
+      include Message
+
       def initialize(channel: "", items: []) = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1521,6 +1573,8 @@ module Cent
     #   @return [Integer] The latest version of the item Centrifugo has, in versioned
     #     mode: zero when it has none. Not set in versionless mode.
     class SharedPollRefreshItem < Data.define(:key, :version)
+      include Message
+
       def initialize(key: "", version: 0) = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1557,6 +1611,8 @@ module Cent
     #     send the same one with direct publishes. Empty means versions are never
     #     reset.
     class SharedPollRefreshResult < Data.define(:items, :epoch)
+      include Message
+
       def initialize(items: [], epoch: "") = super
 
       # The message as Centrifugo reads it, fields at their zero value left out.
@@ -1598,6 +1654,8 @@ module Cent
     #   @return [Object, nil] The item's previous data, the base for delta compression
     #     when the namespace uses it, so that Centrifugo need not keep it.
     class SharedPollRefreshResultItem < Data.define(:key, :data, :version, :removed, :prev_data)
+      include Message
+
       def initialize(
         key: "",
         data: nil,
