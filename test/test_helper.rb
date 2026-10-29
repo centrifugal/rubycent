@@ -40,7 +40,7 @@ class Fake
     req = Request.new(url:, headers:, body:, timeout:)
     @lock.synchronize { @requests << req }
     method = req.method_name
-    payload = JSON.parse(body)
+    payload = JSON.parse(body, max_nesting: false)
     if method == "batch" && !@handlers.key?("batch")
       replies = payload["commands"].map do |cmd|
         m, b = cmd.first

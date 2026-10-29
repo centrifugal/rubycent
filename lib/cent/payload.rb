@@ -26,33 +26,44 @@ module Cent
     #
     # @return [Object] value
     def check!(value, where)
-      walk(value, where, 0)
+      # Iterative, not recursive: a deep value must not overflow the stack,
+      # which is small on some platforms - a thread's on Windows.
+      stack = [[value, where, 0]]
+      until stack.empty?
+        v, path, depth = stack.pop
+        raise InvalidRequestError, "#{path} is nested too deeply, or contains itself" if depth > MAX_DEPTH
+
+        case v
+        when Hash
+          v.each do |k, item|
+            key!(k, path)
+            stack << [item, "#{path}.#{k}", depth + 1]
+          end
+        when Array then v.each_with_index { |item, i| stack << [item, "#{path}[#{i}]", depth + 1] }
+        else scalar!(v, path)
+        end
+      end
       value
     end
 
-    def walk(value, where, depth)
-      raise InvalidRequestError, "#{where} is nested too deeply, or contains itself" if depth > MAX_DEPTH
+    def key!(k, path)
+      case k
+      when String then string!(k, "#{path} key #{k.inspect}")
+      when Symbol then nil
+      else raise InvalidRequestError, "#{path} has a #{k.class} key, #{k.inspect}: JSON object keys are strings"
+      end
+    end
 
-      case value
-      when Hash
-        value.each do |k, v|
-          case k
-          when String then string!(k, "#{where} key #{k.inspect}")
-          when Symbol then nil
-          else raise InvalidRequestError, "#{where} has a #{k.class} key, #{k.inspect}: JSON object keys are strings"
-          end
-          walk(v, "#{where}.#{k}", depth + 1)
-        end
-      when Array
-        value.each_with_index { |v, i| walk(v, "#{where}[#{i}]", depth + 1) }
-      when String then string!(value, where)
+    def scalar!(v, path)
+      case v
+      when String then string!(v, path)
       when Float
-        raise InvalidRequestError, "#{where} is #{value}, which is not a JSON number" unless value.finite?
+        raise InvalidRequestError, "#{path} is #{v}, which is not a JSON number" unless v.finite?
       when Integer, true, false, nil, Symbol then nil
-      when JSON::Fragment then fragment!(value, where)
+      when JSON::Fragment then fragment!(v, path)
       else
         raise InvalidRequestError,
-              "#{where} is a #{value.class}, which is not a JSON value: convert it - " \
+              "#{path} is a #{v.class}, which is not a JSON value: convert it - " \
               "or encode the payload yourself and pass the JSON as JSON::Fragment.new(json)"
       end
     end

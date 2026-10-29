@@ -256,6 +256,14 @@ class ClientTest < Minitest::Test
     assert_equal 1, @fake.requests.size
   end
 
+  def test_deep_payload_is_checked_without_recursion
+    deep = 900.times.reduce(1) { |v, _| [v] }
+    # In a thread: its stack is the smallest, as on Windows.
+    Thread.new { @client.publish(channel: "c", data: deep) }.join
+
+    assert_equal 1, @fake.requests.size
+  end
+
   def test_cyclic_payload_is_refused
     a = []
     a << a
