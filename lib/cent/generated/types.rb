@@ -1220,7 +1220,8 @@ module Cent
   # DeviceUserUpdate sets the user of devices. Centrifugo PRO only.
   #
   # @!attribute [r] user
-  #   @return [String] The user ID to set. Required.
+  #   @return [String] The user ID to set. Required. "" detaches the devices from their
+  #     user.
   class DeviceUserUpdate < Data.define(:user)
     include Message
 
@@ -1249,7 +1250,7 @@ module Cent
   # DeviceTimezoneUpdate sets the timezone of devices. Centrifugo PRO only.
   #
   # @!attribute [r] timezone
-  #   @return [String] The IANA time zone to set. Required.
+  #   @return [String] The IANA time zone to set. Required. "" clears it.
   class DeviceTimezoneUpdate < Data.define(:timezone)
     include Message
 
@@ -1278,7 +1279,7 @@ module Cent
   # DeviceLocaleUpdate sets the locale of devices. Centrifugo PRO only.
   #
   # @!attribute [r] locale
-  #   @return [String] The locale to set. Required.
+  #   @return [String] The locale to set. Required. "" clears it.
   class DeviceLocaleUpdate < Data.define(:locale)
     include Message
 
@@ -1307,7 +1308,7 @@ module Cent
   # DeviceMetaUpdate sets the meta of devices. Centrifugo PRO only.
   #
   # @!attribute [r] meta
-  #   @return [Hash{String => String}] The meta to set. Required.
+  #   @return [Hash{String => String}] The meta to set. Required. An empty map clears it.
   class DeviceMetaUpdate < Data.define(:meta)
     include Message
 

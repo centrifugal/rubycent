@@ -333,7 +333,32 @@ end
 # order a caller sees.
 def keywords(request)
   required, optional = request.fields.partition { it.doc.join(" ").match?(/\bRequired\./) }
+  required.each { REQUIRED_FIELDS << "#{request.name}.#{it.name}" }
   [*required.map { "#{it.name}:" }, *optional.map { "#{it.name}: nil" }]
+end
+
+# The fields made required keywords, as "Message.field": checked against
+# REQUIRED_FILE, so that a proto comment gaining "Required." - a breaking change
+# of the methods taking it - is a decision, not a side effect of a sync.
+REQUIRED_FIELDS = Set.new
+REQUIRED_FILE = File.join(ROOT, "gen/required_fields.txt")
+
+# Exits when the required fields differ from REQUIRED_FILE; with accept,
+# records them there instead.
+def check_required(accept)
+  want = REQUIRED_FIELDS.to_a.sort
+  return File.write(REQUIRED_FILE, want.map { "#{it}\n" }.join) if accept
+
+  have = File.exist?(REQUIRED_FILE) ? File.read(REQUIRED_FILE).split : []
+  added = want - have
+  removed = have - want
+  return if added.empty? && removed.empty?
+
+  msg = +"the fields the protos mark Required. changed:"
+  msg << "\n  newly required (breaking: calls without them fail): #{added.join(", ")}" unless added.empty?
+  msg << "\n  no longer required: #{removed.join(", ")}" unless removed.empty?
+  warn "#{msg}\nReview them, then run ruby gen/generate.rb --accept-required to record them in gen/required_fields.txt"
+  exit 1
 end
 
 def method_body(out, doc, sig, body)
@@ -474,6 +499,8 @@ def generate
 end
 
 files = generate
+# Before writing: nothing is generated from unreviewed required fields.
+check_required(ARGV.include?("--accept-required"))
 if ARGV.include?("--check")
   stale = files.reject { |name, text| File.exist?(File.join(OUT, name)) && File.read(File.join(OUT, name)) == text }
   unless stale.empty?

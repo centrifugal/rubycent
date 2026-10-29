@@ -1298,7 +1298,7 @@ module Cent
     # Returns a paginated list of registered devices.
     # Centrifugo PRO only.
     #
-    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list. Required.
+    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list: all of them when unset.
     # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
     #   result.
     # @param include_meta [Boolean, nil] Includes meta of each device.
@@ -1312,7 +1312,7 @@ module Cent
     # @return [DeviceListResult]
     # @raise [Error]
     def device_list(
-      filter:,
+      filter: nil,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -1418,7 +1418,8 @@ module Cent
     # Changes the topics of a user. The change is also
     # applied to the user's registered devices. Centrifugo PRO only.
     #
-    # @param user [String, nil] The user ID. Required.
+    # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
+    #   device - anonymous ones included - gets on its next device_register.
     # @param op [String, nil] The operation: add, remove or set. Required.
     # @param topics [Array<String>] The topics for the operation.
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
@@ -2380,7 +2381,7 @@ module Cent
     # Adds the command to the batch: its Pending holds the result once the batch
     # is sent.
     #
-    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list. Required.
+    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list: all of them when unset.
     # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
     #   result.
     # @param include_meta [Boolean, nil] Includes meta of each device.
@@ -2392,7 +2393,7 @@ module Cent
     # @param limit [Integer, nil] The maximum number of devices to return.
     # @return [Pending<DeviceListResult>]
     def device_list(
-      filter:,
+      filter: nil,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -2500,7 +2501,8 @@ module Cent
     # Adds the command to the batch: its Pending holds the result once the batch
     # is sent.
     #
-    # @param user [String, nil] The user ID. Required.
+    # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
+    #   device - anonymous ones included - gets on its next device_register.
     # @param op [String, nil] The operation: add, remove or set. Required.
     # @param topics [Array<String>] The topics for the operation.
     # @return [Pending<UserTopicUpdateResult>]
@@ -3453,7 +3455,7 @@ module Cent
     #
     # The command making the call, checked as a Client checks it.
     #
-    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list. Required.
+    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list: all of them when unset.
     # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
     #   result.
     # @param include_meta [Boolean, nil] Includes meta of each device.
@@ -3466,7 +3468,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def device_list(
-      filter:,
+      filter: nil,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -3573,7 +3575,8 @@ module Cent
     #
     # The command making the call, checked as a Client checks it.
     #
-    # @param user [String, nil] The user ID. Required.
+    # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
+    #   device - anonymous ones included - gets on its next device_register.
     # @param op [String, nil] The operation: add, remove or set. Required.
     # @param topics [Array<String>] The topics for the operation.
     # @return [Command]
