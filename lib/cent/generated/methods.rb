@@ -1174,7 +1174,8 @@ module Cent
     #
     # @param expire_at [Integer, nil] The Unix time in seconds when the invalidation expires.
     #   Optional, but a value matching the token expiration is recommended.
-    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required.
+    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required. ""
+    #   invalidates the tokens of anonymous users.
     # @param issued_before [Integer, nil] The Unix time in seconds: tokens issued before it are
     #   considered revoked. If not set, the current time is used.
     # @param channel [String, nil] Limits the invalidation to subscription tokens for this
@@ -2256,7 +2257,8 @@ module Cent
     #
     # @param expire_at [Integer, nil] The Unix time in seconds when the invalidation expires.
     #   Optional, but a value matching the token expiration is recommended.
-    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required.
+    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required. ""
+    #   invalidates the tokens of anonymous users.
     # @param issued_before [Integer, nil] The Unix time in seconds: tokens issued before it are
     #   considered revoked. If not set, the current time is used.
     # @param channel [String, nil] Limits the invalidation to subscription tokens for this
@@ -3330,7 +3332,8 @@ module Cent
     #
     # @param expire_at [Integer, nil] The Unix time in seconds when the invalidation expires.
     #   Optional, but a value matching the token expiration is recommended.
-    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required.
+    # @param user [String, nil] The ID of the user whose tokens to invalidate. Required. ""
+    #   invalidates the tokens of anonymous users.
     # @param issued_before [Integer, nil] The Unix time in seconds: tokens issued before it are
     #   considered revoked. If not set, the current time is used.
     # @param channel [String, nil] Limits the invalidation to subscription tokens for this
