@@ -33,11 +33,10 @@ class TokenTest < Minitest::Test
 
   def test_spec_shared_poll_vectors
     assert_equal "1700000000:1700003600:c61dbf52085a6973537e71644fa30a3bbfc29a52d7ce9f1b7618531596ce587d",
-                 Cent::SharedPoll.sign("shared_poll_secret", user: "42", channel: "poll:prices", keys: %w[AAPL GOOG],
-                                                             expires_at: EXP, issued_at: IAT)
+                 Cent::SharedPoll.send(:sign_at, IAT, "shared_poll_secret", user: "42", channel: "poll:prices",
+                                                                            keys: %w[AAPL GOOG], expires_at: EXP)
     assert_equal "1700000000:0:92dd64af5612afde06cad03bb63435d951e037cb55a087af05c2a1399abade0e",
-                 Cent::SharedPoll.sign("shared_poll_secret", user: "", channel: "poll:prices", keys: [],
-                                                             issued_at: IAT)
+                 Cent::SharedPoll.send(:sign_at, IAT, "shared_poll_secret", user: "", channel: "poll:prices", keys: [])
     assert_raises(Cent::Error) { Cent::SharedPoll.sign("", user: "", channel: "c", keys: []) }
   end
 

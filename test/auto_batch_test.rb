@@ -173,6 +173,54 @@ class AutoBatchTest < Minitest::Test
     assert_equal %w[q0 q1], storages.map { it[:request_id] }.sort
   end
 
+  def test_batches_are_sent_by_kept_threads_which_close_stops
+    @fake = Fake.new
+    @fake.on("info") do
+      sleep 0.001
+      {}
+    end
+    @fake.on("batch") do |_m, body|
+      sleep 0.001
+      [200, {}, JSON.generate({ "replies" => body["commands"].map { { "info" => {} } } })]
+    end
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 2))
+    before = Thread.list.size
+    peak = before
+    sampler = Thread.new do
+      loop do
+        peak = [peak, Thread.list.size].max
+        sleep 0.001
+      end
+    end
+    Array.new(12) { Thread.new { 30.times { client.info } } }.each(&:join)
+    sampler.kill
+
+    refute_empty @fake.bodies("batch")
+    # The 12 callers and the sampler, and at most one sender per slot.
+    assert_operator peak - before, :<=, 12 + 1 + 2
+    client.close(timeout: 5)
+    sleep 0.01 until Thread.list.size <= before
+  end
+
+  def test_idle_senders_end
+    Cent::AutoBatch::Batcher.worker_idle = 0.05
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1))
+    before = Thread.list
+    first = Thread.new { client.info }
+    wait_for(1)
+    queued = Thread.new { client.info }
+    sleep 0.05
+    2.times { @fake.gate << true }
+    [first, queued].each(&:join)
+    deadline = Cent::HTTP.now + 5
+    sleep 0.01 until (Thread.list - before).empty? || Cent::HTTP.now > deadline
+
+    assert_empty Thread.list - before # the sender ended idle, the client open
+    assert_equal 1, @fake.bodies("batch").size
+  ensure
+    Cent::AutoBatch::Batcher.worker_idle = nil
+  end
+
   def test_stress
     @fake = Fake.new
     @fake.on("publish") do |_m, body|

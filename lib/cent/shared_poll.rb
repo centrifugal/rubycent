@@ -27,10 +27,15 @@ module Cent
     # @param keys [Array<String>]
     # @param expires_at [Time, nil]
     # @return [String]
-    def sign(secret, user:, channel:, keys:, expires_at: nil, issued_at: nil)
+    def sign(secret, user:, channel:, keys:, expires_at: nil)
+      sign_at(Time.now, secret, user:, channel:, keys:, expires_at:)
+    end
+
+    # sign, at the time +now+: for the spec's test vectors.
+    def sign_at(now, secret, user:, channel:, keys:, expires_at: nil)
       raise Error, "shared poll: the secret must be a non-empty String" unless secret.is_a?(String) && !secret.empty?
 
-      iat = (issued_at || Time.now).to_i.to_s
+      iat = now.to_i.to_s
       exp = expires_at.nil? ? "0" : expires_at.to_i.to_s
       keys_hash = OpenSSL::Digest::SHA256.hexdigest(keys.join("\0"))
       # NUL-separated, so that a colon in a user or channel cannot move between
@@ -39,5 +44,7 @@ module Cent
       msg = [iat, exp, user, channel, keys_hash].join("\0")
       "#{iat}:#{exp}:#{OpenSSL::HMAC.hexdigest("SHA256", secret, msg)}"
     end
+
+    private_class_method :sign_at
   end
 end

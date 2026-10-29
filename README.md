@@ -364,19 +364,29 @@ publications into different channels may not, unless the namespace sets
 
 ## Automatic batching
 
-With `auto_batch`, calls made concurrently - from Puma threads, Sidekiq
-workers, fibers - go out together once enough requests are in flight, with no
-delay otherwise, since nothing waits for a timer:
+With `auto_batch`, calls made concurrently from one process go out together
+once `max_in_flight` requests are in flight, with no delay otherwise, since
+nothing waits for a timer. It is for processes which publish a lot at once - a
+Sidekiq process at concurrency 10 or more whose jobs publish, an app on Falcon -
+and does nothing for a Puma web process of a few threads: leave it off there.
 
 ```ruby
+# A Sidekiq process at concurrency 16: about half the threads which publish.
 client = Cent::Client.new(api_endpoint:, api_key:, auto_batch: Cent::AutoBatch.new(max_in_flight: 8))
 ```
+
+Set `max_in_flight` to about half the threads - or fibers - which call the
+client at once. It batches only calls made while that many requests are in
+flight: above the concurrency, it never does; just below, it batches calls one
+at a time, and only limits them. Measured with 16 threads publishing nonstop,
+against Centrifugo PRO with Redis, `max_in_flight: 4` sent 2,800 requests
+instead of 8,000, for twice the publications a second, with Centrifugo and
+Redis doing about half the work per publication, and the Ruby process too.
 
 Every call still gets its own result or error, and keeps its own timeout. Calls
 sharing a batch share its request, though: if the request itself fails - the
 network, a body too large for a proxy in front of Centrifugo (nginx refuses
-bodies over 1 MB by default) - every call in it fails. A smaller
-`max_in_flight` batches more; 8 suits most applications.
+bodies over 1 MB by default) - every call in it fails.
 
 A batch belongs to no single caller: it runs in a thread of its own, with an
 empty fiber storage, carrying no caller's `Fiber[]` values. `batch_context`

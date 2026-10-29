@@ -26,9 +26,11 @@ module Cent
   # fails with that error. Each call keeps its own timeout: the batch lasts
   # until the latest of its calls'.
   #
-  # A smaller max_in_flight batches more: a value above the concurrency the load
-  # needs leaves nearly every call sent alone. Something like 8 suits most
-  # applications.
+  # It is for processes which publish a lot at once - a Sidekiq process at
+  # concurrency 10 or more, an app on Falcon - and does nothing for a Puma web
+  # process of a few threads. Set max_in_flight to about half the threads or
+  # fibers which call the client at once: above that, it never batches; just
+  # below, it batches calls one at a time, and only limits them.
   #
   # @!attribute [r] max_in_flight
   #   @return [Integer] how many requests may be in flight before calls start
@@ -77,6 +79,19 @@ module Cent
     #
     # @api private
     class Batcher
+      # Seconds a thread sending batches waits for the next before it ends.
+      WORKER_IDLE = 10.0
+
+      class << self
+        # WORKER_IDLE, unless the tests set another.
+        #
+        # @api private
+        attr_writer :worker_idle
+
+        # @api private
+        def worker_idle = @worker_idle || WORKER_IDLE
+      end
+
       def initialize(client, opts, batch_context)
         @client = client
         @batch_context = batch_context
@@ -85,6 +100,19 @@ module Cent
         @lock = Mutex.new
         @in_flight = 0
         @queue = []
+        # The threads sending batches, started as needed and kept while busy:
+        # at most one per slot, since a batch holds one, each ending after
+        # WORKER_IDLE seconds without a batch. Starting a thread per batch cost
+        # more than a small batch saved.
+        @jobs = Thread::Queue.new
+        @workers = 0
+        @idle = 0
+      end
+
+      # Stops the threads sending batches, once those in progress are sent.
+      def close
+        n = @lock.synchronize { @workers }
+        n.times { @jobs << :stop }
       end
 
       # [true, what alone returned] when a slot was free and the call went
@@ -169,11 +197,52 @@ module Cent
         end
         return if items.nil?
 
-        # Sent from a thread of its own, so that no caller's thread does work
-        # for others - with an empty fiber storage: a batch is no one caller's.
-        # Counted as a call: close waits for it.
+        # Sent from a thread of the batcher's, so that no caller's thread does
+        # work for others. Counted as a call: close waits for it.
         @client.calls.add
-        Thread.new { Fiber.new(storage: {}) { flush(items) }.resume }
+        dispatch(items)
+      end
+
+      def dispatch(items)
+        start = @lock.synchronize do
+          # Pushed under the lock which a sender ending idle takes: it sees
+          # the batch, and stays for it.
+          @jobs << items
+          next false unless @idle.zero? && @workers < @max_in_flight
+
+          @workers += 1
+          @idle += 1
+        end
+        Thread.new { work } if start
+      end
+
+      def work
+        loop do
+          items = @jobs.pop(timeout: self.class.worker_idle)
+          if items.nil?
+            done = @lock.synchronize do
+              next false unless @jobs.empty?
+
+              @workers -= 1
+              @idle -= 1
+              true
+            end
+            break if done
+
+            next
+          end
+          if items == :stop
+            @lock.synchronize do
+              @workers -= 1
+              @idle -= 1
+            end
+            break
+          end
+          @lock.synchronize { @idle -= 1 }
+          # With an empty fiber storage: a batch is no one caller's.
+          Fiber.new(storage: {}) { flush(items) }.resume
+          @lock.synchronize { @idle += 1 }
+        end
       end
 
       # Takes up to max_batch calls off the head of the queue, skipping those

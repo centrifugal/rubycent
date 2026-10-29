@@ -148,6 +148,7 @@ module Cent
     def close(timeout: nil)
       raise TimeoutError, "close: calls still in progress" unless @calls.close(timeout)
 
+      @batcher&.close
       @pool&.close
     end
 
