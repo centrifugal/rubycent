@@ -1,52 +1,95 @@
 plugins:
-  - rubocop-rspec
+  - rubocop-minitest
   - rubocop-rake
 
 AllCops:
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 3.4
   NewCops: enable
+  SuggestExtensions: false
   Exclude:
-    - 'gemfiles/**/*'
-    - 'vendor/**/*'
+    - "vendor/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+# class Foo < Data.define(...): how YARD documents a Data class.
+Style/DataInheritance:
+  Enabled: false
+
+# The protos' and the spec's words.
+Naming/PredicateMethod:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "lib/cent/generated/**/*"
+
+Metrics:
+  Exclude:
+    - "lib/cent/generated/**/*"
+    - "gen/**/*"
+    - "test/**/*"
 
 Metrics/ClassLength:
-  Max: 160
+  Max: 400
+
+Metrics/ModuleLength:
+  Max: 300
 
 Metrics/MethodLength:
-  Max: 30
-
-Metrics/ParameterLists:
-  Max: 15
-  CountKeywordArgs: false
+  Max: 40
 
 Metrics/AbcSize:
-  Max: 25
+  Max: 45
+
+Metrics/CyclomaticComplexity:
+  Max: 20
+
+Metrics/PerceivedComplexity:
+  Max: 20
 
 Metrics/BlockLength:
   Exclude:
-    - 'spec/**/*'
-    - '*.gemspec'
-    - 'Appraisals'
+    - "*.gemspec"
 
-RSpec/ExampleLength:
-  Max: 25
+Gemspec/DevelopmentDependencies:
+  Enabled: false
 
-RSpec/MultipleExpectations:
-  Max: 5
+# Short names where the meaning is plain: w for the wire form, k and v.
+Naming/MethodParameterName:
+  MinNameLength: 1
 
-RSpec/NestedGroups:
-  Max: 4
-
-# Stubs with `with(body: ...)` act as implicit expectations: a mismatched
-# request body leaves no matching stub and fails the request.
-RSpec/NoExpectationExample:
+# A member named method - the spec's word for an API method - on a value
+# object: RequestInfo, Command, FailedCommand, HTTPRequest, the RPC proxy's
+# request.
+Lint/DataDefineOverride:
+  Enabled: false
+Lint/StructNewOverride:
   Exclude:
-    - 'spec/cent/client_spec.rb'
+    - "gen/**/*"
 
-# Integration specs live under spec/integration/ by design.
-RSpec/SpecFilePathFormat:
-  Exclude:
-    - 'spec/integration/**/*'
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
 
+# Cent is documented once, in lib/cent.rb.
+Style/Documentation:
+  AllowedConstants:
+    - Cent
+
+Metrics/ParameterLists:
+  Max: 7
+  CountKeywordArgs: false
+
+# A test checks a scenario through: its assertions belong together.
+Minitest/MultipleAssertions:
+  Enabled: false
+
+# Released from CI with an API key, which MFA would refuse.
 Gemspec/RequireMFA:
   Enabled: false
+
+# The integration tests' base class.
+Minitest/TestFileName:
+  Exclude:
+    - "test/integration/helper.rb"

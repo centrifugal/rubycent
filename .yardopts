@@ -1,0 +1,7 @@
+--hide-api private
+--no-private
+lib/**/*.rb
+-
+README.md
+MIGRATING.md
+CHANGELOG.md

@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-source 'https://rubygems.org'
+source "https://rubygems.org"
 
-# Specify your gem's dependencies in cent.gemspec
 gemspec
 
-gem 'appraisal', '~> 2.5'
-gem 'pry'
-gem 'rake', '~> 13.0'
-gem 'rspec', '~> 3.12'
-gem 'rubocop', '~> 1.60'
-gem 'rubocop-rake', '~> 0.6'
-gem 'rubocop-rspec', '~> 3.0'
-gem 'webmock', '~> 3.19'
+gem "async", "~> 2.24"
+gem "irb"
+gem "minitest", "~> 6.0"
+gem "rake", "~> 13.2"
+gem "rubocop", "~> 1.81"
+gem "rubocop-minitest", "~> 0.38"
+gem "rubocop-rake", "~> 0.7"
+gem "webmock", "~> 3.25"
+gem "yard", "~> 0.9.37"
