@@ -48,6 +48,7 @@ module Cent
 
     # The outcome of a resolved Pending.
     Resolved = Struct.new(:value, :error) do
+      # @api private
       def outcome(_) = error ? raise(error) : value
     end
     private_constant :Resolved
