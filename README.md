@@ -433,7 +433,8 @@ client = Cent::Client.new(api_endpoint:, http_options: { ca_file: "/etc/ssl/cent
 
 `http_client` sends requests another way - another HTTP library, or a fake in
 tests: a callable taking the URL, the headers, the body and the seconds left,
-and returning `[status, headers, body]`.
+and returning `[status, headers, body]`. WebMock and VCR see the requests of
+the default transport too, as any Net::HTTP request.
 
 Tracing comes from the HTTP library: OpenTelemetry's Net::HTTP
 instrumentation, `opentelemetry-instrumentation-net_http`, traces every

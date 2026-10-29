@@ -161,4 +161,22 @@ class TransportTest < Minitest::Test
     assert_equal [1] * 5, results
     assert_operator Cent::HTTP.now - start, :<, 1.0
   end
+
+  # WebMock, which applications stub HTTP with in their tests, sees cent's
+  # requests: cent makes its connections with whatever Net::HTTP is then.
+  def test_webmock_sees_the_requests
+    require "webmock"
+    WebMock.enable!
+    WebMock.disable_net_connect!
+    WebMock::API.stub_request(:post, "http://centrifugo.test/api/publish")
+                .to_return(status: 200, body: '{"result":{"offset":42}}')
+    client = Cent::Client.new(api_endpoint: "http://centrifugo.test/api")
+
+    assert_equal 42, client.publish(channel: "c", data: 1).offset
+    assert_raises(WebMock::NetConnectNotAllowedError) { client.info }
+  ensure
+    WebMock.reset!
+    WebMock.allow_net_connect!
+    WebMock.disable!
+  end
 end

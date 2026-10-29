@@ -55,8 +55,12 @@ module Cent
       end
     end
 
-    # A connection sending one request at a time, by the deadline it is given.
-    class Connection < Net::HTTP
+    # What makes a Net::HTTP connection send one request at a time, by the
+    # deadline it is given. A connection is made with Net::HTTP.new when it is
+    # needed, and extended with it - not a subclass of Net::HTTP made when cent
+    # loads: whatever Net::HTTP is then - WebMock's in an application's tests,
+    # say - sends the request.
+    module Connection
       attr_reader :deadline, :idle_since
 
       def start_request(deadline)
@@ -158,7 +162,8 @@ module Cent
         stale.each { discard(it) }
         return conn if conn
 
-        conn = Connection.new(uri.host, uri.port)
+        conn = Net::HTTP.new(uri.host, uri.port)
+        conn.extend(Connection)
         conn.use_ssl = uri.scheme == "https"
         conn.keep_alive_timeout = IDLE_TIMEOUT
         conn.max_retries = 0

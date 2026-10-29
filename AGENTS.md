@@ -41,8 +41,10 @@ passes; if you find yourself about to break one, stop and say so instead.
    200 reply.
 4. **One deadline per call.** Its `timeout:`, or `request_timeout`, bounds the
    whole call - the endpoint and token functions, connecting and TLS, the reply
-   read. Net::HTTP bounds each read on its own, so `HTTP::Connection` swaps its
-   socket, in Net::HTTP's `on_connect` hook, for a `DeadlineIO` whose every read
+   read. Net::HTTP bounds each read on its own, so each connection - a
+   `Net::HTTP.new` extended with `HTTP::Connection`, never a subclass made at
+   load, so that WebMock and the like still see it - swaps its socket, in
+   Net::HTTP's private `on_connect` hook, for a `DeadlineIO` whose every read
    and write is bounded by the time left: a reply trickling in - headers
    included - stops at the deadline. Any timeout raises `Cent::TimeoutError`.
 5. **A payload is carried exactly.** A payload from a reply sent back unchanged
@@ -100,6 +102,11 @@ creates the GitHub release.
 
 ## Things that look wrong but are deliberate
 
+- **The deadline hooks into Net::HTTP's internals** - `on_connect`,
+  `Net::BufferedIO#rbuf_fill` and `#write0` - which Net::HTTP does not promise
+  to keep. `test_deadline_bounds_a_trickling_reply` fails if they change, and
+  CI's `net-http-latest` job, also run weekly, runs the tests against the
+  newest net-http gem, released apart from Ruby.
 - **Net::HTTP, not Faraday.** No dependency whose major version an application
   must match (spec 3.4, Stable), and one deadline per request, which Faraday's
   per-operation timeouts cannot give. `http_client:` takes any other library.
