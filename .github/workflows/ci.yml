@@ -1,11 +1,6 @@
 name: CI
 
-on:
-  push:
-  pull_request:
-  # Weekly, for new releases of Ruby's net-http: see net-http-latest.
-  schedule:
-    - cron: "0 6 * * 1"
+on: [push, pull_request]
 
 permissions:
   contents: read
@@ -35,26 +30,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - run: bundle exec rake test
-
-  # The default transport hooks into Net::HTTP's internals - on_connect,
-  # Net::BufferedIO's rbuf_fill and write0 - to bound a request by one
-  # deadline. net-http is a gem released apart from Ruby: this job runs the
-  # tests against its newest release, so that a change to those internals
-  # fails here, not in an application.
-  net-http-latest:
-    name: test (newest net-http)
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
-    env:
-      NET_HTTP_LATEST: "1"
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0"
-          bundler-cache: true
-      - run: bundle exec ruby -rnet/http -e 'puts Net::HTTP::VERSION'
       - run: bundle exec rake test
 
   check:

@@ -13,8 +13,9 @@ lost:
 - **Every call raises unless it did everything asked.** A broadcast or batch in
   which some parts failed raises `BroadcastFailedChannelsError` or
   `BatchFailedCommandsError`, carrying every part's outcome.
-- **One deadline per call**, enforced on every read and write of the default
-  transport: never add a timeout of Net::HTTP's own.
+- **One deadline per call, through public APIs only**: the time left as
+  Net::HTTP's timeouts, again before each body chunk; no hooks into its
+  internals.
 
 Run `bundle exec rake check` before reporting a change as done, and
 `bundle exec rake test:integration` with Centrifugo running for a change to the

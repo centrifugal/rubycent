@@ -39,14 +39,14 @@ passes; if you find yourself about to break one, stop and say so instead.
    raised as the subclass of its code when the code is known, and as `ApiError`
    itself otherwise. Centrifugo's transport error mode gives the same error as a
    200 reply.
-4. **One deadline per call.** Its `timeout:`, or `request_timeout`, bounds the
-   whole call - the endpoint and token functions, connecting and TLS, the reply
-   read. Net::HTTP bounds each read on its own, so each connection - a
-   `Net::HTTP.new` extended with `HTTP::Connection`, never a subclass made at
-   load, so that WebMock and the like still see it - swaps its socket, in
-   Net::HTTP's private `on_connect` hook, for a `DeadlineIO` whose every read
-   and write is bounded by the time left: a reply trickling in - headers
-   included - stops at the deadline. Any timeout raises `Cent::TimeoutError`.
+4. **One deadline per call, with Net::HTTP's public API only.** Its
+   `timeout:`, or `request_timeout`, bounds the call - the endpoint and token
+   functions, connecting and TLS, the reply read. Before a request, the time
+   left becomes Net::HTTP's open, read and write timeouts, and before each
+   chunk of the body, its read timeout again: only headers trickling in can
+   outlast it, which the README says. Connections are made with
+   `Net::HTTP.new` when needed, so that WebMock and the like see them. Any
+   timeout raises `Cent::TimeoutError`.
 5. **A payload is carried exactly.** A payload from a reply sent back unchanged
    is the same JSON value; a `JSON::Fragment` is sent as its text, checked to
    be JSON; NaN, infinities, binary strings, invalid UTF-8 and values JSON
@@ -102,11 +102,10 @@ creates the GitHub release.
 
 ## Things that look wrong but are deliberate
 
-- **The deadline hooks into Net::HTTP's internals** - `on_connect`,
-  `Net::BufferedIO#rbuf_fill` and `#write0` - which Net::HTTP does not promise
-  to keep. `test_deadline_bounds_a_trickling_reply` fails if they change, and
-  CI's `net-http-latest` job, also run weekly, runs the tests against the
-  newest net-http gem, released apart from Ruby.
+- **No deadline enforced inside Net::HTTP.** Headers trickling in can outlast
+  a call's timeout: bounding them would mean replacing Net::HTTP's socket
+  through its private hooks, which it does not promise to keep (spec 3.2). A
+  stalled server, the failure that happens, is bounded either way.
 - **Net::HTTP, not Faraday.** No dependency whose major version an application
   must match (spec 3.4, Stable), and one deadline per request, which Faraday's
   per-operation timeouts cannot give. `http_client:` takes any other library.

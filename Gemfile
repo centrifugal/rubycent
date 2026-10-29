@@ -12,7 +12,4 @@ gem "rubocop", "~> 1.81"
 gem "rubocop-minitest", "~> 0.38"
 gem "rubocop-rake", "~> 0.7"
 gem "webmock", "~> 3.25"
-# The newest net-http, rather than the one Ruby bundles: CI's net-http-latest
-# job checks the deadline's hooks into Net::HTTP against every release.
-gem "net-http", ">= 0" if ENV["NET_HTTP_LATEST"]
 gem "yard", "~> 0.9.37"

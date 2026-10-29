@@ -6,7 +6,10 @@ require "uri"
 
 module Cent
   # The default HTTP transport: Net::HTTP connections kept alive in a pool, each
-  # request bounded by one deadline.
+  # request bounded by one deadline through Net::HTTP's public API: the time
+  # left as its open, read and write timeouts, and again as the read timeout
+  # before each chunk of the body. Only a reply's headers trickling in can
+  # outlast it.
   #
   # @api private
   module HTTP
@@ -25,64 +28,6 @@ module Cent
     MAX_DRAIN_BYTES = 64 << 10
 
     def self.now = ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
-
-    # A socket whose every read and write is bounded by the time left until the
-    # request's deadline: Net::HTTP bounds each read on its own, so a reply
-    # arriving in pieces - its headers too - could outlast any timeout given
-    # per read.
-    class DeadlineIO < Net::BufferedIO
-      attr_accessor :deadline
-
-      private
-
-      def rbuf_fill
-        @read_timeout = left(Net::ReadTimeout)
-        super
-      end
-
-      def write0(*strs)
-        @write_timeout = left(Net::WriteTimeout)
-        super
-      end
-
-      def left(error)
-        return nil if deadline.nil?
-
-        t = deadline - HTTP.now
-        raise error, @io if t <= 0
-
-        t
-      end
-    end
-
-    # What makes a Net::HTTP connection send one request at a time, by the
-    # deadline it is given. A connection is made with Net::HTTP.new when it is
-    # needed, and extended with it - not a subclass of Net::HTTP made when cent
-    # loads: whatever Net::HTTP is then - WebMock's in an application's tests,
-    # say - sends the request.
-    module Connection
-      attr_reader :deadline, :idle_since
-
-      def start_request(deadline)
-        @deadline = deadline
-        t = [deadline - HTTP.now, 0.001].max
-        # Connecting, the TLS handshake included, by the time left; reads and
-        # writes by DeadlineIO.
-        self.open_timeout = t
-        @socket.deadline = deadline if @socket.is_a?(DeadlineIO)
-      end
-
-      def idle! = (@idle_since = HTTP.now)
-
-      private
-
-      def on_connect
-        sock = DeadlineIO.new(@socket.io, read_timeout: @read_timeout, write_timeout: @write_timeout,
-                                          continue_timeout: @continue_timeout, debug_output: @debug_output)
-        sock.deadline = @deadline
-        @socket = sock
-      end
-    end
 
     # Connections kept alive per scheme, host and port. Safe for concurrent use.
     class Pool
@@ -103,7 +48,10 @@ module Cent
         conn = checkout(key, uri)
         reusable = false
         begin
-          conn.start_request(deadline)
+          left = time_left(deadline)
+          conn.open_timeout = left
+          conn.read_timeout = left
+          conn.write_timeout = left
           conn.start unless conn.started?
           req = Net::HTTP::Post.new(uri.request_uri, headers)
           req.body = body
@@ -111,7 +59,7 @@ module Cent
           catch(:drop) do
             conn.request(req) do |res|
               out = [res.code.to_i, res.to_hash.transform_values { it.join(", ") }, +""]
-              read(res, out[2])
+              read(conn, res, out[2], deadline)
             end
             reusable = conn.started?
           end
@@ -124,7 +72,7 @@ module Cent
       def close
         conns = @lock.synchronize do
           @closed = true
-          all = @idle.values.flatten
+          all = @idle.values.flatten(1).map(&:first)
           @idle.clear
           all
         end
@@ -135,26 +83,36 @@ module Cent
 
       # Reads the body into +body+: whole for a 200, up to MAX_API_ERROR_BYTES
       # otherwise, the rest drained so that the connection is reused - or
-      # dropped, by a throw, when there is too much.
-      def read(res, body)
-        if res.code == "200"
-          res.read_body { body << it }
-          return
-        end
+      # dropped, by a throw, when there is too much. Each next chunk is read by
+      # the time left: a body arriving in pieces stops at the deadline.
+      def read(conn, res, body, deadline)
         total = 0
         res.read_body do |chunk|
-          body << chunk.byteslice(0, MAX_API_ERROR_BYTES - body.bytesize) if body.bytesize < MAX_API_ERROR_BYTES
-          total += chunk.bytesize
-          throw :drop if total > MAX_DRAIN_BYTES
+          if res.code == "200"
+            body << chunk
+          else
+            body << chunk.byteslice(0, MAX_API_ERROR_BYTES - body.bytesize) if body.bytesize < MAX_API_ERROR_BYTES
+            total += chunk.bytesize
+            throw :drop if total > MAX_DRAIN_BYTES
+          end
+          conn.read_timeout = time_left(deadline)
         end
+      end
+
+      def time_left(deadline)
+        t = deadline - HTTP.now
+        raise Net::ReadTimeout, "the call's deadline passed" if t <= 0
+
+        t
       end
 
       def checkout(key, uri)
         stale = []
         conn = @lock.synchronize do
           list = @idle[key]
-          while (c = list.pop)
-            break c if HTTP.now - c.idle_since < IDLE_TIMEOUT
+          while (entry = list.pop)
+            c, since = entry
+            break c if HTTP.now - since < IDLE_TIMEOUT
 
             stale << c
           end
@@ -163,7 +121,6 @@ module Cent
         return conn if conn
 
         conn = Net::HTTP.new(uri.host, uri.port)
-        conn.extend(Connection)
         conn.use_ssl = uri.scheme == "https"
         conn.keep_alive_timeout = IDLE_TIMEOUT
         conn.max_retries = 0
@@ -172,11 +129,10 @@ module Cent
       end
 
       def checkin(key, conn)
-        conn.idle!
         keep = @lock.synchronize do
           next false if @closed || @idle[key].size >= MAX_IDLE
 
-          @idle[key] << conn
+          @idle[key] << [conn, HTTP.now]
           true
         end
         discard(conn) unless keep

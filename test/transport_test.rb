@@ -63,11 +63,12 @@ class TransportTest < Minitest::Test
     assert_equal 1, requests
   end
 
-  def test_deadline_bounds_a_trickling_reply
+  def test_deadline_bounds_a_trickling_body
     serve do |_line, _headers, _body, sock|
-      # Headers a byte at a time: each read is quick, the whole is not.
-      "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\n{\"result\":{}}".each_char do |c|
-        sock.write(c)
+      # The body a byte at a time: each read is quick, the whole is not.
+      sock.write("HTTP/1.1 200 OK\r\nContent-Length: 40\r\n\r\n")
+      40.times do
+        sock.write(" ")
         sleep 0.05
       end
     end
