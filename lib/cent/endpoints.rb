@@ -36,8 +36,8 @@ module Cent
     # @api private
     class Endpoint < Handler
       # @param on_error [#call, nil] told of every 500 and 400, with the
-      #   request and the error. Pass one: without it, an error in the block is
-      #   answered with 500 and logged nowhere.
+      #   request and the error; it must not raise. Pass one: without it, an
+      #   error in the block is answered with 500 and logged nowhere.
       def initialize(on_error: nil, &) = super(MAX_BODY, on_error, &)
 
       private

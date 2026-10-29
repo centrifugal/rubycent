@@ -8,6 +8,8 @@ module Cent
     # Statuses Centrifugo's transport error mode maps errors to.
     TRANSPORT_MODE_STATUSES = [400, 404, 409, 416, 429, 500].freeze
     MIN_ERROR_CODE = 100
+    # nil is "no data", as for every keyword: how to publish JSON null.
+    NULL_HINT = " (to publish JSON null, pass data: JSON::Fragment.new(\"null\"))"
 
     module_function
 
@@ -94,11 +96,11 @@ module Cent
       case method
       when "publish"
         raise InvalidRequestError, "channel is required" unless w["channel"]
-        raise InvalidRequestError, "data or b64data is required" unless w.key?("data") || w["b64data"]
+        raise InvalidRequestError, "data or b64data is required#{NULL_HINT}" unless w.key?("data") || w["b64data"]
       when "broadcast"
         channels = w["channels"]
         raise InvalidRequestError, "channels is required" unless channels
-        raise InvalidRequestError, "data or b64data is required" unless w.key?("data") || w["b64data"]
+        raise InvalidRequestError, "data or b64data is required#{NULL_HINT}" unless w.key?("data") || w["b64data"]
 
         channels.each_with_index { |ch, i| raise InvalidRequestError, "channels[#{i}] is empty" if ch.empty? }
       end

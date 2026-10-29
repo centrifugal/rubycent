@@ -173,6 +173,25 @@ class AutoBatchTest < Minitest::Test
     assert_equal %w[q0 q1], storages.map { it[:request_id] }.sort
   end
 
+  def test_batch_context_which_does_not_send_fails_the_batch_not_the_batcher
+    ctx = ->(_callers) {} # never calls its block
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1), batch_context: ctx)
+    queue = client.instance_variable_get(:@batcher).instance_variable_get(:@queue)
+    2.times do |round|
+      first = Thread.new { client.info(timeout: 2) }
+      wait_for(round + 1)
+      queued = Array.new(2) { Thread.new { client.info(timeout: 2) } }
+      deadline = Cent::HTTP.now + 5
+      Thread.pass until queue.size == 2 || Cent::HTTP.now > deadline
+      @fake.gate << true
+      first.join
+      queued.each do |t|
+        e = assert_raises(Cent::InvalidConfigError) { t.value }
+        assert_includes e.message, "batch_context must call its block"
+      end
+    end
+  end
+
   def test_batches_are_sent_by_kept_threads_which_close_stops
     @fake = Fake.new
     @fake.on("info") do

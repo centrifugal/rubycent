@@ -36,8 +36,18 @@ class TokenTest < Minitest::Test
                  Cent::SharedPoll.send(:sign_at, IAT, "shared_poll_secret", user: "42", channel: "poll:prices",
                                                                             keys: %w[AAPL GOOG], expires_at: EXP)
     assert_equal "1700000000:0:92dd64af5612afde06cad03bb63435d951e037cb55a087af05c2a1399abade0e",
-                 Cent::SharedPoll.send(:sign_at, IAT, "shared_poll_secret", user: "", channel: "poll:prices", keys: [])
-    assert_raises(Cent::Error) { Cent::SharedPoll.sign("", user: "", channel: "c", keys: []) }
+                 Cent::SharedPoll.send(:sign_at, IAT, "shared_poll_secret", user: "", channel: "poll:prices", keys: [],
+                                                                            expires_at: :never)
+    assert_raises(Cent::Error) { Cent::SharedPoll.sign("", user: "", channel: "c", keys: [], expires_at: :never) }
+  end
+
+  def test_shared_poll_expiry_is_chosen_explicitly
+    assert_raises(ArgumentError) { Cent::SharedPoll.sign("s", user: "", channel: "c", keys: []) }
+    [nil, 3600, 1_700_000_000, 1.5].each do |bad|
+      e = assert_raises(Cent::Error) { Cent::SharedPoll.sign("s", user: "", channel: "c", keys: [], expires_at: bad) }
+      assert_includes e.message, ":never"
+    end
+    assert_match(/\A\d+:0:\h{64}\z/, Cent::SharedPoll.sign("s", user: "", channel: "c", keys: [], expires_at: :never))
   end
 
   def test_connection_claims_on_the_wire
@@ -190,5 +200,14 @@ class TokenTest < Minitest::Test
     assert_raises(T::Error) { T::ApiTokens.new(key:, audience: "a", ttl: -1) }
     assert_raises(T::Error) { T::ApiTokens.new(key:, audince: "a") }
     assert_raises(T::Error) { T::ApiTokens.new(key:).token }
+    # A fixed key is checked when the ApiTokens is made, not on the first call.
+    assert_raises(T::Error) { T::ApiTokens.new(key: T::Key.hmac("secret"), audience: "a") }
+  end
+
+  def test_api_tokens_inspect_hides_the_token
+    tokens = T::ApiTokens.new(key: ed.with_key_id("k"), audience: "a")
+
+    refute_includes tokens.inspect, tokens.token
+    assert_includes tokens.inspect, "audience"
   end
 end

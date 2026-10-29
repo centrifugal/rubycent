@@ -7,7 +7,14 @@ module Cent
   private_constant :MAX_ERROR_ITEMS
 
   # The base of every error cent raises.
-  class Error < StandardError; end
+  class Error < StandardError
+    # @return [String, nil] set on the error broadcast_with_retry raises when no
+    #   attempt got a reply - a timeout, say - to the key its attempts carried,
+    #   made for the call when the request had none: Centrifugo may have
+    #   published, and a retry with this key does not publish twice. Nil on
+    #   other errors.
+    attr_accessor :idempotency_key
+  end
 
   # An error of Centrifugo itself: it understood the request and refused it, or
   # failed to carry it out.
@@ -222,7 +229,13 @@ module Cent
     # @return [BroadcastResult] every channel's outcome
     attr_reader :result
 
-    # @api private
+    # For test doubles, say:
+    #
+    #   raise Cent::BroadcastFailedChannelsError.new(result.failed, result.channels.size, result)
+    #
+    # @param failed [Array<ChannelResult>]
+    # @param total [Integer]
+    # @param result [BroadcastResult]
     def initialize(failed, total, result)
       @failed = failed
       @total = total
@@ -274,7 +287,11 @@ module Cent
     # @return [BatchResult]
     attr_reader :result
 
-    # @api private
+    # For test doubles, say.
+    #
+    # @param failed [Array<FailedCommand>]
+    # @param total [Integer]
+    # @param result [BatchResult]
     def initialize(failed, total, result)
       @failed = failed
       @total = total

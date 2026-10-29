@@ -604,7 +604,7 @@ module Cent
     # @return [PublishResult]
     # @raise [Error]
     def publish(
-      channel: nil,
+      channel:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -675,7 +675,7 @@ module Cent
     # @return [BroadcastResult]
     # @raise [Error]
     def broadcast(
-      channels: nil,
+      channels:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -761,7 +761,7 @@ module Cent
     # @return [BroadcastResult]
     # @raise [Error]
     def broadcast_with_retry(
-      channels: nil,
+      channels:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -820,7 +820,7 @@ module Cent
     # @return [SubscribeResult]
     # @raise [Error]
     def subscribe(
-      channel: nil,
+      channel:,
       user: nil,
       expire_at: nil,
       info: nil,
@@ -870,7 +870,7 @@ module Cent
     # @return [UnsubscribeResult]
     # @raise [Error]
     def unsubscribe(
-      channel: nil,
+      channel:,
       user: nil,
       client: nil,
       session: nil,
@@ -937,7 +937,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [PresenceResult]
     # @raise [Error]
-    def presence(channel: nil, timeout: nil)
+    def presence(channel:, timeout: nil)
       invoke("presence", PresenceResult, timeout) do
         Requests.presence(channel)
       end
@@ -951,7 +951,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [PresenceStatsResult]
     # @raise [Error]
-    def presence_stats(channel: nil, timeout: nil)
+    def presence_stats(channel:, timeout: nil)
       invoke("presence_stats", PresenceStatsResult, timeout) do
         Requests.presence_stats(channel)
       end
@@ -970,7 +970,7 @@ module Cent
     # @return [HistoryResult]
     # @raise [Error]
     def history(
-      channel: nil,
+      channel:,
       limit: nil,
       since: nil,
       reverse: nil,
@@ -989,7 +989,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [HistoryRemoveResult]
     # @raise [Error]
-    def history_remove(channel: nil, timeout: nil)
+    def history_remove(channel:, timeout: nil)
       invoke("history_remove", HistoryRemoveResult, timeout) do
         Requests.history_remove(channel)
       end
@@ -1095,7 +1095,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [UpdateUserStatusResult]
     # @raise [Error]
-    def update_user_status(users: nil, state: nil, timeout: nil)
+    def update_user_status(users:, state: nil, timeout: nil)
       invoke("update_user_status", UpdateUserStatusResult, timeout) do
         Requests.update_user_status(users, state)
       end
@@ -1107,7 +1107,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [GetUserStatusResult]
     # @raise [Error]
-    def get_user_status(users: nil, timeout: nil)
+    def get_user_status(users:, timeout: nil)
       invoke("get_user_status", GetUserStatusResult, timeout) do
         Requests.get_user_status(users)
       end
@@ -1119,7 +1119,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [DeleteUserStatusResult]
     # @raise [Error]
-    def delete_user_status(users: nil, timeout: nil)
+    def delete_user_status(users:, timeout: nil)
       invoke("delete_user_status", DeleteUserStatusResult, timeout) do
         Requests.delete_user_status(users)
       end
@@ -1135,7 +1135,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [BlockUserResult]
     # @raise [Error]
-    def block_user(expire_at: nil, user: nil, timeout: nil)
+    def block_user(user:, expire_at: nil, timeout: nil)
       invoke("block_user", BlockUserResult, timeout) do
         Requests.block_user(expire_at, user)
       end
@@ -1147,7 +1147,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [UnblockUserResult]
     # @raise [Error]
-    def unblock_user(user: nil, timeout: nil)
+    def unblock_user(user:, timeout: nil)
       invoke("unblock_user", UnblockUserResult, timeout) do
         Requests.unblock_user(user)
       end
@@ -1163,7 +1163,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [RevokeTokenResult]
     # @raise [Error]
-    def revoke_token(expire_at: nil, uid: nil, timeout: nil)
+    def revoke_token(uid:, expire_at: nil, timeout: nil)
       invoke("revoke_token", RevokeTokenResult, timeout) do
         Requests.revoke_token(expire_at, uid)
       end
@@ -1183,8 +1183,8 @@ module Cent
     # @return [InvalidateUserTokensResult]
     # @raise [Error]
     def invalidate_user_tokens(
+      user:,
       expire_at: nil,
-      user: nil,
       issued_before: nil,
       channel: nil,
       timeout: nil
@@ -1217,10 +1217,10 @@ module Cent
     # @return [DeviceRegisterResult]
     # @raise [Error]
     def device_register(
+      provider:,
+      token:,
+      platform:,
       id: nil,
-      provider: nil,
-      token: nil,
-      platform: nil,
       user: nil,
       meta: nil,
       topics: nil,
@@ -1312,7 +1312,7 @@ module Cent
     # @return [DeviceListResult]
     # @raise [Error]
     def device_list(
-      filter: nil,
+      filter:,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -1380,8 +1380,8 @@ module Cent
     # @return [DeviceTopicUpdateResult]
     # @raise [Error]
     def device_topic_update(
-      device_id: nil,
-      op: nil,
+      device_id:,
+      op:,
       topics: nil,
       user: nil,
       timeout: nil
@@ -1425,8 +1425,8 @@ module Cent
     # @return [UserTopicUpdateResult]
     # @raise [Error]
     def user_topic_update(
-      user: nil,
-      op: nil,
+      user:,
+      op:,
       topics: nil,
       timeout: nil
     )
@@ -1464,8 +1464,8 @@ module Cent
     # @return [SendPushNotificationResult]
     # @raise [Error]
     def send_push_notification(
-      recipient: nil,
-      notification: nil,
+      recipient:,
+      notification:,
       uid: nil,
       send_at: nil,
       optimize_for_reliability: nil,
@@ -1505,9 +1505,9 @@ module Cent
     # @return [UpdatePushStatusResult]
     # @raise [Error]
     def update_push_status(
-      analytics_uid: nil,
-      status: nil,
-      device_id: nil,
+      analytics_uid:,
+      status:,
+      device_id:,
       msg_id: nil,
       timeout: nil
     )
@@ -1523,7 +1523,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [CancelPushResult]
     # @raise [Error]
-    def cancel_push(uid: nil, timeout: nil)
+    def cancel_push(uid:, timeout: nil)
       invoke("cancel_push", CancelPushResult, timeout) do
         Requests.cancel_push(uid)
       end
@@ -1559,8 +1559,8 @@ module Cent
     # @return [MapPublishResult]
     # @raise [Error]
     def map_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
       data: nil,
       b64data: nil,
       stream_data: nil,
@@ -1605,8 +1605,8 @@ module Cent
     # @return [MapRemoveResult]
     # @raise [Error]
     def map_remove(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
       idempotency_key: nil,
       timeout: nil
     )
@@ -1637,7 +1637,7 @@ module Cent
     # @return [MapReadStateResult]
     # @raise [Error]
     def map_read_state(
-      channel: nil,
+      channel:,
       cursor: nil,
       limit: nil,
       key: nil,
@@ -1673,7 +1673,7 @@ module Cent
     # @return [MapReadStreamResult]
     # @raise [Error]
     def map_read_stream(
-      channel: nil,
+      channel:,
       since_offset: nil,
       since_epoch: nil,
       limit: nil,
@@ -1697,7 +1697,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [MapStatsResult]
     # @raise [Error]
-    def map_stats(channel: nil, timeout: nil)
+    def map_stats(channel:, timeout: nil)
       invoke("map_stats", MapStatsResult, timeout) do
         Requests.map_stats(channel)
       end
@@ -1709,7 +1709,7 @@ module Cent
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [MapClearResult]
     # @raise [Error]
-    def map_clear(channel: nil, timeout: nil)
+    def map_clear(channel:, timeout: nil)
       invoke("map_clear", MapClearResult, timeout) do
         Requests.map_clear(channel)
       end
@@ -1731,11 +1731,11 @@ module Cent
     # @return [SharedPollPublishResult]
     # @raise [Error]
     def shared_poll_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
+      version:,
       data: nil,
       b64data: nil,
-      version: nil,
       epoch: nil,
       timeout: nil
     )
@@ -1783,7 +1783,7 @@ module Cent
     #   accepts the publication even if its version is lower than before.
     # @return [Pending<PublishResult>]
     def publish(
-      channel: nil,
+      channel:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -1836,7 +1836,7 @@ module Cent
     #   accepts the publication even if its version is lower than before.
     # @return [Pending<BroadcastResult>]
     def broadcast(
-      channels: nil,
+      channels:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -1892,7 +1892,7 @@ module Cent
     #   Without label_filter it acts on every connection. Centrifugo PRO only.
     # @return [Pending<SubscribeResult>]
     def subscribe(
-      channel: nil,
+      channel:,
       user: nil,
       expire_at: nil,
       info: nil,
@@ -1942,7 +1942,7 @@ module Cent
     # @param all_users [Boolean, nil] Works as SubscribeRequest.all_users. Centrifugo PRO only.
     # @return [Pending<UnsubscribeResult>]
     def unsubscribe(
-      channel: nil,
+      channel:,
       user: nil,
       client: nil,
       session: nil,
@@ -2009,7 +2009,7 @@ module Cent
     #
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Pending<PresenceResult>]
-    def presence(channel: nil)
+    def presence(channel:)
       add("presence", PresenceResult) do
         Requests.presence(channel)
       end
@@ -2024,7 +2024,7 @@ module Cent
     #
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Pending<PresenceStatsResult>]
-    def presence_stats(channel: nil)
+    def presence_stats(channel:)
       add("presence_stats", PresenceStatsResult) do
         Requests.presence_stats(channel)
       end
@@ -2044,7 +2044,7 @@ module Cent
     # @param reverse [Boolean, nil] Iterates in reverse order, from latest to earliest.
     # @return [Pending<HistoryResult>]
     def history(
-      channel: nil,
+      channel:,
       limit: nil,
       since: nil,
       reverse: nil
@@ -2063,7 +2063,7 @@ module Cent
     #
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Pending<HistoryRemoveResult>]
-    def history_remove(channel: nil)
+    def history_remove(channel:)
       add("history_remove", HistoryRemoveResult) do
         Requests.history_remove(channel)
       end
@@ -2168,7 +2168,7 @@ module Cent
     # @param state [String, nil] An optional custom state to store in the user status. It can
     #   be restricted by the user_status.state_regex option.
     # @return [Pending<UpdateUserStatusResult>]
-    def update_user_status(users: nil, state: nil)
+    def update_user_status(users:, state: nil)
       add("update_user_status", UpdateUserStatusResult) do
         Requests.update_user_status(users, state)
       end
@@ -2181,7 +2181,7 @@ module Cent
     #
     # @param users [Array<String>] The list of user IDs to get the status for. Required.
     # @return [Pending<GetUserStatusResult>]
-    def get_user_status(users: nil)
+    def get_user_status(users:)
       add("get_user_status", GetUserStatusResult) do
         Requests.get_user_status(users)
       end
@@ -2194,7 +2194,7 @@ module Cent
     #
     # @param users [Array<String>] The list of user IDs to delete the status for. Required.
     # @return [Pending<DeleteUserStatusResult>]
-    def delete_user_status(users: nil)
+    def delete_user_status(users:)
       add("delete_user_status", DeleteUserStatusResult) do
         Requests.delete_user_status(users)
       end
@@ -2211,7 +2211,7 @@ module Cent
     #   users small.
     # @param user [String, nil] The ID of the user to block. Required.
     # @return [Pending<BlockUserResult>]
-    def block_user(expire_at: nil, user: nil)
+    def block_user(user:, expire_at: nil)
       add("block_user", BlockUserResult) do
         Requests.block_user(expire_at, user)
       end
@@ -2224,7 +2224,7 @@ module Cent
     #
     # @param user [String, nil] The ID of the user to unblock. Required.
     # @return [Pending<UnblockUserResult>]
-    def unblock_user(user: nil)
+    def unblock_user(user:)
       add("unblock_user", UnblockUserResult) do
         Requests.unblock_user(user)
       end
@@ -2241,7 +2241,7 @@ module Cent
     #   Optional, but a value matching the token expiration is recommended.
     # @param uid [String, nil] The unique ID of the token to revoke (jti claim). Required.
     # @return [Pending<RevokeTokenResult>]
-    def revoke_token(expire_at: nil, uid: nil)
+    def revoke_token(uid:, expire_at: nil)
       add("revoke_token", RevokeTokenResult) do
         Requests.revoke_token(expire_at, uid)
       end
@@ -2262,8 +2262,8 @@ module Cent
     #   channel.
     # @return [Pending<InvalidateUserTokensResult>]
     def invalidate_user_tokens(
+      user:,
       expire_at: nil,
-      user: nil,
       issued_before: nil,
       channel: nil
     )
@@ -2296,10 +2296,10 @@ module Cent
     #   tag, for example en-US.
     # @return [Pending<DeviceRegisterResult>]
     def device_register(
+      provider:,
+      token:,
+      platform:,
       id: nil,
-      provider: nil,
-      token: nil,
-      platform: nil,
       user: nil,
       meta: nil,
       topics: nil,
@@ -2392,7 +2392,7 @@ module Cent
     # @param limit [Integer, nil] The maximum number of devices to return.
     # @return [Pending<DeviceListResult>]
     def device_list(
-      filter: nil,
+      filter:,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -2460,8 +2460,8 @@ module Cent
     #   conflict error (or not found if there is no such device).
     # @return [Pending<DeviceTopicUpdateResult>]
     def device_topic_update(
-      device_id: nil,
-      op: nil,
+      device_id:,
+      op:,
       topics: nil,
       user: nil
     )
@@ -2504,7 +2504,7 @@ module Cent
     # @param op [String, nil] The operation: add, remove or set. Required.
     # @param topics [Array<String>] The topics for the operation.
     # @return [Pending<UserTopicUpdateResult>]
-    def user_topic_update(user: nil, op: nil, topics: nil)
+    def user_topic_update(user:, op:, topics: nil)
       add("user_topic_update", UserTopicUpdateResult) do
         Requests.user_topic_update(user, op, topics)
       end
@@ -2540,8 +2540,8 @@ module Cent
     #   available in templating.
     # @return [Pending<SendPushNotificationResult>]
     def send_push_notification(
-      recipient: nil,
-      notification: nil,
+      recipient:,
+      notification:,
       uid: nil,
       send_at: nil,
       optimize_for_reliability: nil,
@@ -2581,9 +2581,9 @@ module Cent
     # @param msg_id [String, nil] The message ID issued by the provider.
     # @return [Pending<UpdatePushStatusResult>]
     def update_push_status(
-      analytics_uid: nil,
-      status: nil,
-      device_id: nil,
+      analytics_uid:,
+      status:,
+      device_id:,
       msg_id: nil
     )
       add("update_push_status", UpdatePushStatusResult) do
@@ -2599,7 +2599,7 @@ module Cent
     #
     # @param uid [String, nil] The uid of the push notification to cancel. Required.
     # @return [Pending<CancelPushResult>]
-    def cancel_push(uid: nil)
+    def cancel_push(uid:)
       add("cancel_push", CancelPushResult) do
         Requests.cancel_push(uid)
       end
@@ -2636,8 +2636,8 @@ module Cent
     #   writes.
     # @return [Pending<MapPublishResult>]
     def map_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
       data: nil,
       b64data: nil,
       stream_data: nil,
@@ -2681,7 +2681,7 @@ module Cent
     #   not applied again, and its result is suppressed with suppress_reason
     #   "idempotency". Keys are kept for 5 minutes by default.
     # @return [Pending<MapRemoveResult>]
-    def map_remove(channel: nil, key: nil, idempotency_key: nil)
+    def map_remove(channel:, key:, idempotency_key: nil)
       add("map_remove", MapRemoveResult) do
         Requests.map_remove(channel, key, idempotency_key)
       end
@@ -2710,7 +2710,7 @@ module Cent
     #   position error.
     # @return [Pending<MapReadStateResult>]
     def map_read_state(
-      channel: nil,
+      channel:,
       cursor: nil,
       limit: nil,
       key: nil,
@@ -2746,7 +2746,7 @@ module Cent
     # @param reverse [Boolean, nil] Returns entries newest first.
     # @return [Pending<MapReadStreamResult>]
     def map_read_stream(
-      channel: nil,
+      channel:,
       since_offset: nil,
       since_epoch: nil,
       limit: nil,
@@ -2770,7 +2770,7 @@ module Cent
     #
     # @param channel [String, nil] The name of the map channel. Required.
     # @return [Pending<MapStatsResult>]
-    def map_stats(channel: nil)
+    def map_stats(channel:)
       add("map_stats", MapStatsResult) do
         Requests.map_stats(channel)
       end
@@ -2783,7 +2783,7 @@ module Cent
     #
     # @param channel [String, nil] The name of the map channel. Required.
     # @return [Pending<MapClearResult>]
-    def map_clear(channel: nil)
+    def map_clear(channel:)
       add("map_clear", MapClearResult) do
         Requests.map_clear(channel)
       end
@@ -2806,11 +2806,11 @@ module Cent
     #   versions and unsubscribes current subscribers with insufficient state.
     # @return [Pending<SharedPollPublishResult>]
     def shared_poll_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
+      version:,
       data: nil,
       b64data: nil,
-      version: nil,
       epoch: nil
     )
       add("shared_poll_publish", SharedPollPublishResult) do
@@ -2857,7 +2857,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def publish(
-      channel: nil,
+      channel:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -2910,7 +2910,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def broadcast(
-      channels: nil,
+      channels:,
       data: nil,
       b64data: nil,
       skip_history: nil,
@@ -2966,7 +2966,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def subscribe(
-      channel: nil,
+      channel:,
       user: nil,
       expire_at: nil,
       info: nil,
@@ -3016,7 +3016,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def unsubscribe(
-      channel: nil,
+      channel:,
       user: nil,
       client: nil,
       session: nil,
@@ -3083,7 +3083,7 @@ module Cent
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def presence(channel: nil)
+    def presence(channel:)
       build("presence") do
         Requests.presence(channel)
       end
@@ -3098,7 +3098,7 @@ module Cent
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def presence_stats(channel: nil)
+    def presence_stats(channel:)
       build("presence_stats") do
         Requests.presence_stats(channel)
       end
@@ -3118,7 +3118,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def history(
-      channel: nil,
+      channel:,
       limit: nil,
       since: nil,
       reverse: nil
@@ -3137,7 +3137,7 @@ module Cent
     # @param channel [String, nil] The name of the channel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def history_remove(channel: nil)
+    def history_remove(channel:)
       build("history_remove") do
         Requests.history_remove(channel)
       end
@@ -3242,7 +3242,7 @@ module Cent
     #   be restricted by the user_status.state_regex option.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def update_user_status(users: nil, state: nil)
+    def update_user_status(users:, state: nil)
       build("update_user_status") do
         Requests.update_user_status(users, state)
       end
@@ -3255,7 +3255,7 @@ module Cent
     # @param users [Array<String>] The list of user IDs to get the status for. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def get_user_status(users: nil)
+    def get_user_status(users:)
       build("get_user_status") do
         Requests.get_user_status(users)
       end
@@ -3268,7 +3268,7 @@ module Cent
     # @param users [Array<String>] The list of user IDs to delete the status for. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def delete_user_status(users: nil)
+    def delete_user_status(users:)
       build("delete_user_status") do
         Requests.delete_user_status(users)
       end
@@ -3285,7 +3285,7 @@ module Cent
     # @param user [String, nil] The ID of the user to block. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def block_user(expire_at: nil, user: nil)
+    def block_user(user:, expire_at: nil)
       build("block_user") do
         Requests.block_user(expire_at, user)
       end
@@ -3298,7 +3298,7 @@ module Cent
     # @param user [String, nil] The ID of the user to unblock. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def unblock_user(user: nil)
+    def unblock_user(user:)
       build("unblock_user") do
         Requests.unblock_user(user)
       end
@@ -3315,7 +3315,7 @@ module Cent
     # @param uid [String, nil] The unique ID of the token to revoke (jti claim). Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def revoke_token(expire_at: nil, uid: nil)
+    def revoke_token(uid:, expire_at: nil)
       build("revoke_token") do
         Requests.revoke_token(expire_at, uid)
       end
@@ -3336,8 +3336,8 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def invalidate_user_tokens(
+      user:,
       expire_at: nil,
-      user: nil,
       issued_before: nil,
       channel: nil
     )
@@ -3370,10 +3370,10 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def device_register(
+      provider:,
+      token:,
+      platform:,
       id: nil,
-      provider: nil,
-      token: nil,
-      platform: nil,
       user: nil,
       meta: nil,
       topics: nil,
@@ -3466,7 +3466,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def device_list(
-      filter: nil,
+      filter:,
       include_total_count: nil,
       include_meta: nil,
       include_topics: nil,
@@ -3534,8 +3534,8 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def device_topic_update(
-      device_id: nil,
-      op: nil,
+      device_id:,
+      op:,
       topics: nil,
       user: nil
     )
@@ -3578,7 +3578,7 @@ module Cent
     # @param topics [Array<String>] The topics for the operation.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def user_topic_update(user: nil, op: nil, topics: nil)
+    def user_topic_update(user:, op:, topics: nil)
       build("user_topic_update") do
         Requests.user_topic_update(user, op, topics)
       end
@@ -3614,8 +3614,8 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def send_push_notification(
-      recipient: nil,
-      notification: nil,
+      recipient:,
+      notification:,
       uid: nil,
       send_at: nil,
       optimize_for_reliability: nil,
@@ -3655,9 +3655,9 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def update_push_status(
-      analytics_uid: nil,
-      status: nil,
-      device_id: nil,
+      analytics_uid:,
+      status:,
+      device_id:,
       msg_id: nil
     )
       build("update_push_status") do
@@ -3673,7 +3673,7 @@ module Cent
     # @param uid [String, nil] The uid of the push notification to cancel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def cancel_push(uid: nil)
+    def cancel_push(uid:)
       build("cancel_push") do
         Requests.cancel_push(uid)
       end
@@ -3710,8 +3710,8 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def map_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
       data: nil,
       b64data: nil,
       stream_data: nil,
@@ -3755,7 +3755,7 @@ module Cent
     #   "idempotency". Keys are kept for 5 minutes by default.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def map_remove(channel: nil, key: nil, idempotency_key: nil)
+    def map_remove(channel:, key:, idempotency_key: nil)
       build("map_remove") do
         Requests.map_remove(channel, key, idempotency_key)
       end
@@ -3784,7 +3784,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def map_read_state(
-      channel: nil,
+      channel:,
       cursor: nil,
       limit: nil,
       key: nil,
@@ -3820,7 +3820,7 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def map_read_stream(
-      channel: nil,
+      channel:,
       since_offset: nil,
       since_epoch: nil,
       limit: nil,
@@ -3844,7 +3844,7 @@ module Cent
     # @param channel [String, nil] The name of the map channel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def map_stats(channel: nil)
+    def map_stats(channel:)
       build("map_stats") do
         Requests.map_stats(channel)
       end
@@ -3857,7 +3857,7 @@ module Cent
     # @param channel [String, nil] The name of the map channel. Required.
     # @return [Command]
     # @raise [InvalidRequestError]
-    def map_clear(channel: nil)
+    def map_clear(channel:)
       build("map_clear") do
         Requests.map_clear(channel)
       end
@@ -3880,11 +3880,11 @@ module Cent
     # @return [Command]
     # @raise [InvalidRequestError]
     def shared_poll_publish(
-      channel: nil,
-      key: nil,
+      channel:,
+      key:,
+      version:,
       data: nil,
       b64data: nil,
-      version: nil,
       epoch: nil
     )
       build("shared_poll_publish") do

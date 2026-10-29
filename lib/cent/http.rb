@@ -40,6 +40,9 @@ module Cent
         @closed = false
       end
 
+      # @return [Hash] the Net::HTTP settings of its connections
+      attr_reader :options
+
       # Sends a POST, and returns [status, headers, body]: the body of a
       # status other than 200 read up to MAX_API_ERROR_BYTES.
       def post(url, headers, body, deadline)

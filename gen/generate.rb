@@ -327,6 +327,15 @@ def emit_methods(out, name, intro, cmds)
   out << "  end\n"
 end
 
+# The keywords of a request's fields: required where the proto marks the field
+# plainly "Required." - "Required unless ..." stays optional - nil by default
+# otherwise. Required ones first, as Ruby style has them: keywords have no
+# order a caller sees.
+def keywords(request)
+  required, optional = request.fields.partition { it.doc.join(" ").match?(/\bRequired\./) }
+  [*required.map { "#{it.name}:" }, *optional.map { "#{it.name}: nil" }]
+end
+
 def method_body(out, doc, sig, body)
   out << comment(doc, "    ")
   out << "#{sig}\n"
@@ -337,7 +346,7 @@ end
 def emit_client_methods(out, cmds)
   intro = ["The server API methods of Client, one per method of api.proto.", "", "@api private"]
   emit_methods(out, "ClientMethods", intro, cmds) do |c|
-    params = c.request.fields.map { "#{it.name}: nil" }
+    params = keywords(c.request)
     call = requests_call(c, "      ")
     if c.method == "broadcast"
       doc = [*method_doc(c), "", *BROADCAST_DOC, "", *param_docs(c.request), TIMEOUT_DOC,
@@ -373,7 +382,7 @@ def emit_batch_methods(out, cmds)
     sent = "is sent, and raises BroadcastFailedChannelsError when any channel failed." if c.method == "broadcast"
     doc = [*method_doc(c), "", "Adds the command to the batch: its Pending holds the result once the batch",
            sent, "", *param_docs(c.request), "@return [Pending<#{result}>]"]
-    params = c.request.fields.map { "#{it.name}: nil" }
+    params = keywords(c.request)
     call = requests_call(c, "      ")
     add = c.method == "broadcast" ? "add_broadcast do" : "add(#{c.method.inspect}, #{result}) do"
     method_body(out, doc, signature("    ", c.method, params), [add, "  #{call.gsub("\n", "\n  ")}", "end"])
@@ -385,7 +394,7 @@ def emit_command_methods(out, cmds)
   emit_methods(out, "CommandMethods", intro, cmds) do |c|
     doc = [*method_doc(c), "", "The command making the call, checked as a Client checks it.", "",
            *param_docs(c.request), "@return [Command]", "@raise [InvalidRequestError]"]
-    params = c.request.fields.map { "#{it.name}: nil" }
+    params = keywords(c.request)
     call = requests_call(c, "      ")
     method_body(out, doc, signature("    ", c.method, params),
                 ["build(#{c.method.inspect}) do", "  #{call.gsub("\n", "\n  ")}", "end"])

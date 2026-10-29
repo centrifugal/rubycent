@@ -30,7 +30,9 @@ class ClientTest < Minitest::Test
 
     assert_operator methods.size, :>, 35
     methods.each do |m|
-      args = m == :publish ? { channel: "c", data: 1 } : {}
+      # Required keywords given nil: present, but unset.
+      required = Cent::Client.instance_method(m).parameters.filter_map { |t, n| [n, nil] if t == :keyreq }.to_h
+      args = m == :publish ? { channel: "c", data: 1 } : required
       res = @client.public_send(m, **args)
 
       assert_equal "#{Fake::ENDPOINT}/#{m}", @fake.requests.last.url
@@ -48,7 +50,7 @@ class ClientTest < Minitest::Test
       assert_equal %i[key timeout], fields.pop, m
       assert_equal fields, params.call(Cent::Batch.instance_method(m)), m
       assert_equal fields, params.call(Cent::Command.method(m)), m
-      assert_empty(fields.to_h.except(:key), m)
+      assert_empty(fields.to_h.except(:key, :keyreq), m)
     end
     retry_params = params.call(Cent::Client.instance_method(:broadcast_with_retry)).map(&:last)
     broadcast = params.call(Cent::Client.instance_method(:broadcast)).map(&:last)[0...-1]
@@ -226,7 +228,7 @@ class ClientTest < Minitest::Test
 
   def test_validation
     [
-      [{ data: 1 }, "invalid publish request: channel is required"],
+      [{ channel: nil, data: 1 }, "invalid publish request: channel is required"],
       [{ channel: "a" }, "invalid publish request: data or b64data is required"],
       [{ channel: "a", data: Float::NAN }, "data is NaN, which is not a JSON number"],
       [{ channel: "a", data: Float::INFINITY }, "data is Infinity, which is not a JSON number"],
@@ -243,7 +245,7 @@ class ClientTest < Minitest::Test
       refute Cent.retryable?(err)
     end
     [
-      [{ data: 1 }, "invalid broadcast request: channels is required"],
+      [{ channels: nil, data: 1 }, "invalid broadcast request: channels is required"],
       [{ channels: ["a"] }, "data or b64data is required"],
       [{ channels: ["a", ""], data: 1 }, "channels[1] is empty"]
     ].each do |args, message|
@@ -410,6 +412,28 @@ class ClientTest < Minitest::Test
     @client.close # again
   end
 
+  def test_starts_fresh_after_fork
+    skip "no fork" unless Process.respond_to?(:fork)
+
+    c = Cent::Client.new(api_endpoint: "http://localhost:1/api", auto_batch: Cent::AutoBatch.new(max_in_flight: 2))
+    pool, batcher, calls = %i[@pool @batcher @calls].map { c.instance_variable_get(it) }
+    pid = fork do
+      # The child's own connections, batch threads and calls in progress.
+      c.__send__(:check_fork)
+      fresh = [pool, batcher, calls].zip(%i[@pool @batcher @calls]).none? do |old, iv|
+        c.instance_variable_get(iv).equal?(old)
+      end
+      exit!(fresh ? 0 : 1)
+    end
+    _, status = Process.wait2(pid)
+
+    assert_predicate status, :success?
+    c.__send__(:check_fork)
+
+    assert_same pool, c.instance_variable_get(:@pool) # the parent's are untouched
+    c.close
+  end
+
   def test_close_waits_for_calls_in_progress
     gate = Queue.new
     @fake.on("info") do
@@ -522,8 +546,75 @@ class ClientTest < Minitest::Test
     assert_equal 1, @fake.requests.size
 
     @fake.on("broadcast", [503, {}, ""])
-    assert_raises(Cent::HTTPError) { @client.broadcast_with_retry(channels: ["a"], data: 1, max_attempts: 3) { 0 } }
+    err = assert_raises(Cent::HTTPError) { @client.broadcast_with_retry(channels: ["a"], data: 1, max_attempts: 3) { 0 } }
     assert_equal 4, @fake.requests.size
+    # The key the attempts carried, for a retry which does not publish twice.
+    assert_equal [err.idempotency_key], @fake.bodies("broadcast").last(3).map { it["idempotency_key"] }.uniq
+  end
+
+  def test_required_fields_are_required_keywords
+    e = assert_raises(ArgumentError) { @client.history }
+    assert_includes e.message, "missing keyword: :channel"
+    # "Required unless ..." stays optional: publish takes data or b64data.
+    assert_equal([:channel], Cent::Client.instance_method(:publish).parameters.filter_map { |t, n| n if t == :keyreq })
+  end
+
+  def test_api_key_nil_is_no_key
+    c = Cent::Client.new(api_endpoint: Fake::ENDPOINT, api_key: nil, http_client: @fake)
+    c.info
+
+    refute @fake.requests.last.headers.key?("X-API-Key")
+  end
+
+  def test_inspect_hides_secrets
+    c = Cent::Client.new(api_endpoint: Fake::ENDPOINT, api_key: "s3cret", headers: { "X-Tenant" => "t" })
+
+    assert_equal "#<Cent::Client #{Fake::ENDPOINT}>", c.inspect
+    refute_includes c.inspect, "s3cret"
+  end
+
+  def test_command_as_json_carries_the_payload_as_an_object
+    cmd = Cent::Command.publish(channel: "news", data: { "n" => 12_345_678_901_234_567_890 })
+
+    payload = { "channel" => "news", "data" => { "n" => 12_345_678_901_234_567_890 } }
+
+    assert_equal({ "method" => "publish", "payload" => payload }, cmd.as_json)
+    assert_equal '{"method":"publish","payload":{"channel":"news","data":{"n":12345678901234567890}}}', cmd.to_json
+  end
+
+  def test_readme_testing
+    replies = {
+      "publish" => { result: { offset: 1, epoch: "e" } },
+      "broadcast" => { result: { responses: [{ result: { offset: 1 } },
+                                             { error: { code: 102, message: "unknown channel" } }] } },
+      "batch" => { replies: [{ publish: { offset: 1 } }, { error: { code: 102, message: "unknown channel" } }] }
+    }
+    centrifugo = ->(url, _headers, _body, _timeout) { [200, {}, JSON.generate(replies.fetch(url.split("/").last))] }
+    client = Cent::Client.new(api_endpoint: "http://centrifugo.test/api", http_client: centrifugo)
+
+    assert_equal 1, client.publish(channel: "news", data: 1).offset
+    e = assert_raises(Cent::BroadcastFailedChannelsError) { client.broadcast(channels: %w[news unknown:x], data: 1) }
+    assert_equal ["unknown:x"], e.failed.map(&:channel)
+    b = client.new_batch
+    p1 = b.publish(channel: "news", data: 1)
+    p2 = b.publish(channel: "unknown:x", data: 1)
+    assert_raises(Cent::BatchFailedCommandsError) { b.send }
+    assert_equal 1, p1.value.offset
+    assert_raises(Cent::UnknownChannelError) { p2.value }
+
+    # Test doubles.
+    ok = Cent::ChannelResult.new(channel: "news", result: Cent::PublishResult.new(offset: 1))
+    bad = Cent::ChannelResult.new(channel: "unknown:x", error: Cent::ApiError.for_code(102, "unknown channel"))
+    err = Cent::BroadcastFailedChannelsError.new([bad], 2,
+                                                 Cent::BroadcastResult.new(channels: [ok, bad], replied: true))
+
+    assert_equal [bad], err.result.failed
+    assert_equal 1, Cent::Pending.resolved(Cent::PublishResult.new(offset: 1)).value.offset
+    assert_raises(Cent::UnknownChannelError) { Cent::Pending.resolved(error: Cent::ApiError.for_code(102, "x")).value }
+    failed = [Cent::FailedCommand.new(index: 1, method: "publish", error: Cent::ApiError.for_code(102, "x"))]
+
+    assert_equal failed,
+                 Cent::BatchFailedCommandsError.new(failed, 2, Cent::BatchResult.new(replied: true, failed:)).failed
   end
 
   def test_broadcast_with_retry_stopped_by_the_block
@@ -643,7 +734,8 @@ class ClientTest < Minitest::Test
     b.info
     b.publish(channel: "a")
     err = assert_raises(Cent::InvalidRequestError) { b.send }
-    assert_equal "batch command #1: invalid publish request: data or b64data is required", err.message
+    assert_equal "batch command #1: invalid publish request: data or b64data is required " \
+                 "(to publish JSON null, pass data: JSON::Fragment.new(\"null\"))", err.message
     assert_empty @fake.requests
   end
 
@@ -671,7 +763,7 @@ class ClientTest < Minitest::Test
     assert_equal '{"method":"publish","payload":{"channel":"news","data":{"text":"hi"}}}', cmd.to_json
     assert_equal '{"method":"info","payload":{}}', Cent::Command.info.to_json
     assert_equal "invalid publish request: channel is required",
-                 assert_raises(Cent::InvalidRequestError) { Cent::Command.publish(data: 1) }.message
+                 assert_raises(Cent::InvalidRequestError) { Cent::Command.publish(channel: nil, data: 1) }.message
     assert_raises(Cent::InvalidRequestError) { Cent::Command.broadcast(channels: ["a"], data: Float::NAN) }
   end
 

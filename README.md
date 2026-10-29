@@ -65,6 +65,14 @@ CENTRIFUGO = Cent::Client.new(
 at_exit { CENTRIFUGO.close(timeout: 5) }
 ```
 
+`api_key: nil` means no key, so the initializer loads where credentials are
+absent - `rails assets:precompile` in a Docker build, say. Under Puma's
+`preload_app!` or a Sidekiq swarm the client is shared across the fork: a
+forked process starts its own connections and batch threads on its first call.
+In tests, `at_exit` handlers run in reverse order, so one registered after
+`minitest/autorun` closes the client before the tests run: close it in
+production only, or from Puma's `on_worker_shutdown`.
+
 Publishing from a model or a job, and rendering a result:
 
 ```ruby
@@ -350,6 +358,9 @@ Retrying:
     rescue Cent::BroadcastFailedChannelsError => e
       retried = e.retryable_channels
       self.class.perform_in(30, retried, data, key) unless retried.empty?
+      # Failed for good - an unknown channel, say: no retry fixes it.
+      lost = e.failed.reject { retried.include?(it.channel) }
+      Sidekiq.logger.error("broadcast #{key} failed in #{lost.map(&:channel)}: #{e.message}") unless lost.empty?
     end
   end
   ```
@@ -454,6 +465,9 @@ failed, duration, status, error - for metrics without a dependency of cent's:
 on_request = ->(info) { StatsD.measure("centrifugo.#{info.method}", info.duration * 1000) }
 ```
 
+It must not raise: what it raises goes to the caller in place of the call's
+outcome.
+
 ## Shutdown
 
 `client.close` refuses new calls with `ClosedError` and waits for the ones in
@@ -518,7 +532,9 @@ end
 Return a result to accept the request, raise `Cent::Proxy::ProxyError` to
 reject it with an error the client receives, or `Cent::Proxy::Disconnect` to
 close the client's connection; any other error fails the request, and goes to
-`on_error` to be logged - without `on_error`, nowhere. A block calling a method,
+`on_error` to be logged - without `on_error`, nowhere; `on_error` itself must
+not raise. Error codes are in [400, 1999], disconnect codes in [4000, 4999],
+and a disconnect reason is at most 32 bytes. A block calling a method,
 as here, keeps the logic where it can `return` early and be tested alone; see
 [Rails](#rails) for where each part goes there. Keep proxy endpoints reachable by Centrifugo only:
 whoever can call them can claim to be any user.
@@ -630,12 +646,18 @@ follows their changes.
 `Cent::Command.publish(...)` - and a method like it for every API method -
 checks a call as a client would and encodes it, for Centrifugo's
 [async consumers](https://centrifugal.dev/docs/server/consumers): its `method`
-and `payload` for an outbox table, or `to_json` for a Kafka message.
+and `payload` for an outbox table, or `to_json` for a Kafka message. `payload`
+is JSON text: the outbox's `payload` column is `jsonb`, and ActiveRecord's json
+types take the object, so parse it - given the text, they store a JSON string,
+which consumers drop:
 
 ```ruby
 cmd = Cent::Command.publish(channel: "news", data: { text: "hi" })
-CentrifugoOutbox.create!(method: cmd.method, payload: cmd.payload, partition: 0)
+CentrifugoOutbox.create!(method: cmd.method, payload: JSON.parse(cmd.payload), partition: 0)
 ```
+
+`as_json` gives the command with its payload as a Hash, so a command inside
+another value - rendered by Rails, or in a job's arguments - is an object too.
 
 A consumer keeps commands in order only within a partition: to keep a
 channel's commands in order, derive their partition from the channel the same
@@ -648,6 +670,40 @@ and recovery, from one thread - each publish waiting for the previous one - in
 chunks of what arrived every 50 ms or so, not a publication per token. See
 [Centrifugo for AI apps](https://centrifugal.dev/docs/getting-started/ai_apps),
 which also covers sizing history for a whole response.
+
+## Testing
+
+Test code which uses cent without Centrifugo: give the client an
+`http_client` answering as Centrifugo does - each method at `/api/<method>`,
+its reply `{"result": {...}}` or `{"error": {"code": ..., "message": ...}}`:
+
+```ruby
+REPLIES = {
+  "publish" => { result: { offset: 1, epoch: "e" } },
+  # One response per channel, in order.
+  "broadcast" => { result: { responses: [{ result: { offset: 1 } },
+                                         { error: { code: 102, message: "unknown channel" } }] } },
+  # One reply per command, in order.
+  "batch" => { replies: [{ publish: { offset: 1 } }, { error: { code: 102, message: "unknown channel" } }] }
+}.freeze
+
+centrifugo = ->(url, _headers, _body, _timeout) { [200, {}, JSON.generate(REPLIES.fetch(url.split("/").last))] }
+client = Cent::Client.new(api_endpoint: "http://centrifugo.test/api", http_client: centrifugo)
+```
+
+A test double of your own returns cent's results and raises its errors,
+partial failures included:
+
+```ruby
+ok = Cent::ChannelResult.new(channel: "news", result: Cent::PublishResult.new(offset: 1))
+bad = Cent::ChannelResult.new(channel: "unknown:x", error: Cent::ApiError.for_code(102, "unknown channel"))
+raise Cent::BroadcastFailedChannelsError.new([bad], 2, Cent::BroadcastResult.new(channels: [ok, bad], replied: true))
+```
+
+and for a batch, `Cent::Pending.resolved(result)` or
+`Cent::Pending.resolved(error:)` as each command's outcome, with
+`Cent::BatchFailedCommandsError.new(failed, total, Cent::BatchResult.new(replied: true, failed:))`
+of `Cent::FailedCommand.new(index:, method:, error:)`.
 
 ## More
 

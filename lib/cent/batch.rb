@@ -34,6 +34,23 @@ module Cent
     # @return [Object] the result of the command's method
     # @raise [Error]
     def value = @batch.outcome(@index)
+
+    # A Pending of no batch, whose {#value} returns +value+ or raises +error+:
+    # for test doubles of code which reads a batch's outcomes.
+    #
+    #   Cent::Pending.resolved(Cent::PublishResult.new(offset: 1))
+    #   Cent::Pending.resolved(error: Cent::ApiError.for_code(102, "unknown channel"))
+    #
+    # @param value [Object]
+    # @param error [Exception, nil]
+    # @return [Pending]
+    def self.resolved(value = nil, error: nil) = new(Resolved.new(value, error), 0)
+
+    # The outcome of a resolved Pending.
+    Resolved = Struct.new(:value, :error) do
+      def outcome(_) = error ? raise(error) : value
+    end
+    private_constant :Resolved
   end
 
   # Commands sent to Centrifugo in one request. Create one with

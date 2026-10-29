@@ -277,7 +277,14 @@ module Cent
         replies =
           if @batch_context
             out = nil
-            @batch_context.call(items.map(&:storage)) { out = @client.send_auto_batch(body, items.size, timeout) }
+            called = false
+            @batch_context.call(items.map(&:storage)) do
+              called = true
+              out = @client.send_auto_batch(body, items.size, timeout)
+            end
+            # Without the batch sent, its calls fail - not the batcher.
+            raise InvalidConfigError, "batch_context must call its block once: the batch was not sent" unless called
+
             out
           else
             @client.send_auto_batch(body, items.size, timeout)

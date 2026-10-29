@@ -517,7 +517,14 @@ module Cent
         @lock = Mutex.new
         @token = nil
         @refresh_at = 0.0
+        # A fixed key is checked now, by its first token, not on the first call.
+        token if key
       end
+
+      # Without the token or the key.
+      #
+      # @return [String]
+      def inspect = "#<#{self.class} ttl=#{@ttl} claims=#{@claims.inspect}>"
 
       # A token valid for at least half of ttl, signing a new one when the
       # previous one has less left.

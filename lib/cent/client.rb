@@ -55,9 +55,9 @@ module Cent
     #   "/publish".
     # @param api_endpoint_func [#call, nil] instead of api_endpoint, returns it
     #   for each request, for addresses discovered rather than fixed
-    # @param api_key [String] sent as X-API-Key. Leave it and bearer_token_func
-    #   unset when requests are authenticated another way - mutual TLS, a proxy
-    #   - or not at all.
+    # @param api_key [String, nil] sent as X-API-Key. Leave it and
+    #   bearer_token_func unset - nil, or "" - when requests are authenticated
+    #   another way - mutual TLS, a proxy - or not at all.
     # @param bearer_token_func [#call, nil] returns the token sent as
     #   "Authorization: Bearer" with each request, for Centrifugo PRO's JWKS
     #   authentication of the API - an {Token::ApiTokens}'s +method(:token)+,
@@ -76,7 +76,8 @@ module Cent
     #   for a proxy in front of Centrifugo. Not X-API-Key, Authorization or
     #   Content-Type. A User-Agent replaces cent's.
     # @param on_request [#call, nil] called after every HTTP request with a
-    #   {RequestInfo}, for metrics; the call waits for it
+    #   {RequestInfo}, for metrics; the call waits for it. It must not raise:
+    #   what it raises goes to the caller in place of the call's outcome
     # @param auto_batch [AutoBatch, nil] sends calls made concurrently in
     #   batches: see {AutoBatch}
     # @param batch_context [#call, nil] with auto_batch, called with the fiber
@@ -95,6 +96,7 @@ module Cent
       @endpoint = api_endpoint && Client.check_endpoint(api_endpoint, "api_endpoint")
       @endpoint_func = callable(api_endpoint_func, "api_endpoint_func")
 
+      api_key = "" if api_key.nil? # no key, as when credentials are absent
       raise InvalidConfigError, "api_key must be a String, not #{api_key.class}" unless api_key.is_a?(String)
       unless api_key.empty? || bearer_token_func.nil?
         raise InvalidConfigError,
@@ -115,11 +117,19 @@ module Cent
       @on_request = callable(on_request, "on_request")
       setup_transport(http_client, http_options)
       @calls = Calls.new
+      @auto_batch = [auto_batch, batch_context]
       @batcher = batcher(auto_batch, batch_context)
+      @pid = ::Process.pid
+      @fork_lock = Mutex.new
     end
 
     # @return [Float] the seconds bounding a call without a timeout of its own
     attr_reader :request_timeout
+
+    # Without the API key, headers or anything else secret.
+    #
+    # @return [String]
+    def inspect = "#<#{self.class} #{@endpoint || "api_endpoint_func"}>"
 
     # An empty {Batch} sent by this client. Without +parallel+ the commands run
     # one by one, in the order added - but Centrifugo PRO sends a sequential
@@ -210,6 +220,7 @@ module Cent
     #
     # @api private
     def send_batch(body, n, timeout)
+      check_fork
       @calls.enter
       begin
         return [] if body.nil?
@@ -251,6 +262,24 @@ module Cent
       else
         check_http_options(http_options)
         @pool = HTTP::Pool.new(http_options)
+      end
+    end
+
+    # In a process forked after the client was used - under Puma's
+    # preload_app! or a Sidekiq swarm, say - starts afresh: its own connections,
+    # as the parent's sockets are the parent's, and its own batch threads, as
+    # threads do not survive a fork. The parent's connections are left to it,
+    # not closed.
+    def check_fork
+      return if @pid == ::Process.pid
+
+      @fork_lock.synchronize do
+        next if @pid == ::Process.pid
+
+        @calls = Calls.new
+        @pool = HTTP::Pool.new(@pool.options) if @pool
+        @batcher = batcher(*@auto_batch) if @batcher
+        @pid = ::Process.pid
       end
     end
 
@@ -328,6 +357,7 @@ module Cent
     def call_result(method, timeout, &)
       wire = encode_request(method, &)
       deadline = deadline(timeout)
+      check_fork
       @calls.enter
       begin
         alone = lambda do
@@ -532,7 +562,10 @@ module Cent
       # The final result, or the error to raise: BroadcastFailedChannelsError
       # when some attempt got a reply, the last attempt's error otherwise.
       def outcome(last)
-        raise last unless @replied
+        unless @replied
+          last.idempotency_key = @key if last.is_a?(Error)
+          raise last
+        end
 
         result.check!
       end

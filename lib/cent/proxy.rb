@@ -109,8 +109,8 @@ module Cent
     # @api private
     class ProxyHandler < Handler
       # @param on_error [#call, nil] told of every 500 and 400, with the
-      #   {HTTPRequest} and the error. Pass one: without it, an error in the
-      #   block is answered with 500 and logged nowhere.
+      #   {HTTPRequest} and the error; it must not raise. Pass one: without it,
+      #   an error in the block is answered with 500 and logged nowhere.
       # @param max_body [Integer] the largest request body read, in bytes
       def initialize(on_error: nil, max_body: DEFAULT_MAX_BODY, &) = super(max_body, on_error, &)
 
