@@ -1,7 +1,7 @@
 v5.0.0
 ======
 
-A rewrite to the [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/v4_dev/spec.md).
+A rewrite to the [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md).
 Migrating from cent 4: see [MIGRATING.md](MIGRATING.md).
 
 * Ruby 3.4 or newer, Centrifugo v6. The json gem is the only dependency: Faraday and jwt are gone.

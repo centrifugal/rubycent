@@ -21,7 +21,7 @@ gem "cent", "~> 5.0"   # json is the only dependency
 
 cent 5 replaces cent 4: see [MIGRATING.md](MIGRATING.md) - an application
 which needs time to move can stay on `gem "cent", "~> 4.0"`. cent implements the
-[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/v4_dev/spec.md),
+[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
 version 0.2.
 
 ## Example
@@ -378,18 +378,16 @@ client = Cent::Client.new(api_endpoint:, api_key:, auto_batch: Cent::AutoBatch.n
 Set `max_in_flight` to about half the threads - or fibers - which call the
 client at once. It batches only calls made while that many requests are in
 flight: above the concurrency, it never does; just below, it batches calls one
-at a time, and only limits them. Measured with 16 threads publishing nonstop,
-against Centrifugo PRO with Redis, `max_in_flight: 4` sent 2,800 requests
-instead of 8,000, for twice the publications a second, with Centrifugo and
-Redis doing about half the work per publication, and the Ruby process too.
+at a time, and only limits them. Under heavy publishing it sends a fraction of
+the requests, for up to twice the publications a second, with Centrifugo, Redis
+and your process doing about half the work per publication.
 
 Every call still gets its own result or error, and keeps its own timeout. Calls
 sharing a batch share its request, though: if the request itself fails - the
 network, a body too large for a proxy in front of Centrifugo (nginx refuses
 bodies over 1 MB by default) - every call in it fails.
 
-A batch belongs to no single caller: it runs in a thread of its own, with an
-empty fiber storage, carrying no caller's `Fiber[]` values. `batch_context`
+A batch belongs to no single caller: it carries no caller's `Fiber[]` values. `batch_context`
 gets the callers' fiber storages and a block sending the batch - to tag its
 logs, or start a tracing span linking each caller's:
 
@@ -434,9 +432,8 @@ Rejected credentials make every call raise `Cent::UnauthorizedError`.
 
 ## HTTP, tracing and metrics
 
-cent sends requests with Net::HTTP, from Ruby itself: up to 256 connections to
-a host are kept alive, idle ones closed after 50 seconds; redirects are never
-followed. TLS and other settings of the connections go in `http_options`:
+cent sends requests with Net::HTTP, from Ruby itself, keeping connections
+alive between calls and never following redirects. TLS and other settings of the connections go in `http_options`:
 
 ```ruby
 client = Cent::Client.new(api_endpoint:, http_options: { ca_file: "/etc/ssl/centrifugo-ca.pem",

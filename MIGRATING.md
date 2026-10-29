@@ -1,7 +1,7 @@
 # Migrating from cent 4 to cent 5
 
 cent 5 is a rewrite, to the
-[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/v4_dev/spec.md).
+[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md).
 It needs Ruby 3.4 or newer and Centrifugo v6, and depends on nothing but the
 json gem: Faraday and the jwt gem are gone. An application which needs time to
 move can stay on `gem "cent", "~> 4.0"`, which keeps working.
