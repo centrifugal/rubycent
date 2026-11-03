@@ -155,3 +155,34 @@ class TestServer
     sock.close unless sock.closed?
   end
 end
+
+require_relative "../gen/proto"
+
+# api.proto as the generator reads it, for the tests of what it finds in the
+# comments and for requests with every field filled.
+module APIProto
+  SCHEMA = Proto.parse(File.read(File.expand_path("../proto/api.proto", __dir__)), "api.proto")
+  SCALARS = {
+    "string" => "x", "bool" => true, "int32" => 1, "int64" => 1, "uint32" => 1, "uint64" => 1,
+    "double" => 1.5, "float" => 1.5, "bytes" => { "k" => "v" }, "BoolValue" => true, "Int32Value" => 1
+  }.freeze
+
+  # The keywords of a method with every field of its request set, nested
+  # messages' too, as Hashes.
+  def self.filled(method)
+    cmd = SCHEMA.by_name["Command"].fields.find { it.name == method.to_s }
+    fields(SCHEMA.by_name.fetch(cmd.type), [])
+  end
+
+  def self.fields(message, outer)
+    message.fields.each_with_object({}) do |f, h|
+      next if outer.include?(f.type) # FilterNode's nodes: one level is enough
+
+      one = SCALARS.fetch(f.type) { fields(SCHEMA.by_name.fetch(f.type), [*outer, message.name]) }
+      h[f.name.to_sym] = if f.map? then { "k" => one }
+                         elsif f.list? then [one]
+                         else one
+                         end
+    end
+  end
+end

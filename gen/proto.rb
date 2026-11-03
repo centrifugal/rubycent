@@ -20,6 +20,31 @@ module Proto
 
   class Error < StandardError; end
 
+  # What the generator reads in the comments.
+
+  # A field the proto marks "Required." without a condition: "Required unless
+  # ..." and "Required when ..." are conditional, and so are not.
+  def self.required?(field) = field.doc.join(" ").match?(/\bRequired\./)
+
+  # A required field whose comment gives its empty value a meaning after
+  # "Required." - `"" detaches the devices`, `An empty map clears it.` - which
+  # is not checked before sending: empty is one of its values.
+  def self.empty_has_meaning?(field)
+    _, sep, after = field.doc.join(" ").partition(/\bRequired\./)
+    !sep.empty? && (after.include?('""') || after.match?(/\bempty\b/i))
+  end
+
+  # A presence wrapper: a message with one field which Centrifugo reads by
+  # whether it is there - BoolValue and Int32Value, whose field is value, and
+  # one whose only field's empty value has a meaning, as the update messages
+  # of device_update. It is sent whenever it is set, even empty.
+  def self.presence_wrapper?(message)
+    return false unless message&.fields&.size == 1
+
+    f = message.fields.first
+    (message.name.end_with?("Value") && f.name == "value") || empty_has_meaning?(f)
+  end
+
   MESSAGE_OPEN = /\Amessage\s+(\w+)\s*\{\s*(\})?\z/
   FIELD = /\A(repeated\s+)?(\w+)\s+(\w+)\s*=\s*\d+\s*;\z/
   MAP_FIELD = /\Amap\s*<\s*(\w+)\s*,\s*(\w+)\s*>\s+(\w+)\s*=\s*\d+\s*;\z/

@@ -1225,8 +1225,6 @@ module Cent
   class DeviceUserUpdate < Data.define(:user)
     include Message
 
-    def initialize(user: "") = super
-
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1253,8 +1251,6 @@ module Cent
   #   @return [String] The IANA time zone to set. Required. "" clears it.
   class DeviceTimezoneUpdate < Data.define(:timezone)
     include Message
-
-    def initialize(timezone: "") = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -1283,8 +1279,6 @@ module Cent
   class DeviceLocaleUpdate < Data.define(:locale)
     include Message
 
-    def initialize(locale: "") = super
-
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -1311,8 +1305,6 @@ module Cent
   #   @return [Hash{String => String}] The meta to set. Required. An empty map clears it.
   class DeviceMetaUpdate < Data.define(:meta)
     include Message
-
-    def initialize(meta: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -1343,7 +1335,7 @@ module Cent
   class DeviceTopicsUpdate < Data.define(:op, :topics)
     include Message
 
-    def initialize(op: "", topics: []) = super
+    def initialize(op:, topics: []) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -2055,8 +2047,6 @@ module Cent
   class FcmPushNotification < Data.define(:message)
     include Message
 
-    def initialize(message: nil) = super
-
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
     # @api private
@@ -2083,8 +2073,6 @@ module Cent
   #   @return [Object, nil] The HMS Message object as JSON. Required.
   class HmsPushNotification < Data.define(:message)
     include Message
-
-    def initialize(message: nil) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -2115,7 +2103,7 @@ module Cent
   class ApnsPushNotification < Data.define(:headers, :payload)
     include Message
 
-    def initialize(headers: {}, payload: nil) = super
+    def initialize(payload:, headers: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -2151,7 +2139,7 @@ module Cent
   class WebPushPushNotification < Data.define(:headers, :payload)
     include Message
 
-    def initialize(headers: {}, payload: nil) = super
+    def initialize(payload:, headers: {}) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -2254,7 +2242,7 @@ module Cent
   class PushTimeLimitStrategy < Data.define(:send_after_time, :send_before_time, :no_tz_send_now)
     include Message
 
-    def initialize(send_after_time: "", send_before_time: "", no_tz_send_now: false) = super
+    def initialize(send_after_time:, send_before_time:, no_tz_send_now: false) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #
@@ -2327,8 +2315,6 @@ module Cent
   #   @return [Integer] The interval in milliseconds. Required.
   class RateLimitPolicy < Data.define(:rate, :interval_ms)
     include Message
-
-    def initialize(rate: 0, interval_ms: 0) = super
 
     # The message as Centrifugo reads it, fields at their zero value left out.
     #

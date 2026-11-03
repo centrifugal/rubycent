@@ -48,6 +48,90 @@ module Cent
     "shared_poll_publish" => false
   }.freeze
 
+  # The fields each request - by its method - and each message in a request -
+  # by its name - must have a value in, and the messages in it to check:
+  # [field, required, the message's name or nil, a list]. Checked on the
+  # request's JSON, which leaves out a field at its zero value.
+  #
+  # @api private
+  REQUIRED = {
+    "publish" => [["channel", true, nil, false]].freeze,
+    "broadcast" => [["channels", true, nil, true]].freeze,
+    "subscribe" => [["channel", true, nil, false]].freeze,
+    "unsubscribe" => [["channel", true, nil, false]].freeze,
+    "disconnect" => [].freeze,
+    "presence" => [["channel", true, nil, false]].freeze,
+    "presence_stats" => [["channel", true, nil, false]].freeze,
+    "history" => [["channel", true, nil, false]].freeze,
+    "history_remove" => [["channel", true, nil, false]].freeze,
+    "info" => [].freeze,
+    "refresh" => [].freeze,
+    "channels" => [].freeze,
+    "connections" => [].freeze,
+    "update_user_status" => [["users", true, nil, true]].freeze,
+    "get_user_status" => [["users", true, nil, true]].freeze,
+    "delete_user_status" => [["users", true, nil, true]].freeze,
+    "block_user" => [["user", true, nil, false]].freeze,
+    "unblock_user" => [["user", true, nil, false]].freeze,
+    "revoke_token" => [["uid", true, nil, false]].freeze,
+    "invalidate_user_tokens" => [].freeze,
+    "device_register" => [
+      ["provider", true, nil, false],
+      ["token", true, nil, false],
+      ["platform", true, nil, false]
+    ].freeze,
+    "device_update" => [["topics_update", false, "DeviceTopicsUpdate", false]].freeze,
+    "device_remove" => [].freeze,
+    "device_list" => [].freeze,
+    "device_topic_list" => [].freeze,
+    "device_topic_update" => [["device_id", true, nil, false], ["op", true, nil, false]].freeze,
+    "user_topic_list" => [].freeze,
+    "user_topic_update" => [["op", true, nil, false]].freeze,
+    "send_push_notification" => [
+      ["recipient", true, nil, false],
+      ["notification", true, "PushNotification", false],
+      ["limit_strategy", false, "PushLimitStrategy", false]
+    ].freeze,
+    "update_push_status" => [
+      ["analytics_uid", true, nil, false],
+      ["status", true, nil, false],
+      ["device_id", true, nil, false]
+    ].freeze,
+    "cancel_push" => [["uid", true, nil, false]].freeze,
+    "map_publish" => [["channel", true, nil, false], ["key", true, nil, false]].freeze,
+    "map_remove" => [["channel", true, nil, false], ["key", true, nil, false]].freeze,
+    "map_read_state" => [["channel", true, nil, false]].freeze,
+    "map_read_stream" => [["channel", true, nil, false]].freeze,
+    "map_stats" => [["channel", true, nil, false]].freeze,
+    "map_clear" => [["channel", true, nil, false]].freeze,
+    "shared_poll_publish" => [
+      ["channel", true, nil, false],
+      ["key", true, nil, false],
+      ["version", true, nil, false]
+    ].freeze,
+    "DeviceTopicsUpdate" => [["op", true, nil, false]].freeze,
+    "PushNotification" => [
+      ["fcm", false, "FcmPushNotification", false],
+      ["hms", false, "HmsPushNotification", false],
+      ["apns", false, "ApnsPushNotification", false],
+      ["webpush", false, "WebPushPushNotification", false]
+    ].freeze,
+    "FcmPushNotification" => [["message", true, nil, false]].freeze,
+    "HmsPushNotification" => [["message", true, nil, false]].freeze,
+    "ApnsPushNotification" => [["payload", true, nil, false]].freeze,
+    "WebPushPushNotification" => [["payload", true, nil, false]].freeze,
+    "PushLimitStrategy" => [
+      ["rate_limit", false, "PushRateLimitStrategy", false],
+      ["time_limit", false, "PushTimeLimitStrategy", false]
+    ].freeze,
+    "PushRateLimitStrategy" => [["policies", false, "RateLimitPolicy", true]].freeze,
+    "RateLimitPolicy" => [["rate", true, nil, false], ["interval_ms", true, nil, false]].freeze,
+    "PushTimeLimitStrategy" => [
+      ["send_after_time", true, nil, false],
+      ["send_before_time", true, nil, false]
+    ].freeze
+  }.freeze
+
   # The JSON of each API method's request, from its fields, as the methods of
   # Client, Batch and Command take them.
   #
@@ -334,11 +418,11 @@ module Cent
       w = {}
       Wire.put(w, "ids", ids, "", :str, :list)
       Wire.put(w, "users", users, "", :str, :list)
-      Wire.put(w, "user_update", user_update, "", DeviceUserUpdate)
-      Wire.put(w, "meta_update", meta_update, "", DeviceMetaUpdate)
+      Wire.put(w, "user_update", user_update, "", DeviceUserUpdate, :presence)
+      Wire.put(w, "meta_update", meta_update, "", DeviceMetaUpdate, :presence)
       Wire.put(w, "topics_update", topics_update, "", DeviceTopicsUpdate)
-      Wire.put(w, "timezone_update", timezone_update, "", DeviceTimezoneUpdate)
-      Wire.put(w, "locale_update", locale_update, "", DeviceLocaleUpdate)
+      Wire.put(w, "timezone_update", timezone_update, "", DeviceTimezoneUpdate, :presence)
+      Wire.put(w, "locale_update", locale_update, "", DeviceLocaleUpdate, :presence)
       w
     end
 

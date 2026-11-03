@@ -90,19 +90,18 @@ module Cent
       err
     end
 
-    # The rules every Centrifugo holds a request to, checked before sending.
+    # The rules every Centrifugo holds a request to, checked before sending:
+    # the fields the proto marks required, and publish's and broadcast's data.
     # Everything else Centrifugo checks itself.
     def validate(method, w)
+      Wire.check_required(w, method)
       case method
       when "publish"
-        raise InvalidRequestError, "channel is required" unless w["channel"]
         raise InvalidRequestError, "data or b64data is required#{NULL_HINT}" unless w.key?("data") || w["b64data"]
       when "broadcast"
-        channels = w["channels"]
-        raise InvalidRequestError, "channels is required" unless channels
         raise InvalidRequestError, "data or b64data is required#{NULL_HINT}" unless w.key?("data") || w["b64data"]
 
-        channels.each_with_index { |ch, i| raise InvalidRequestError, "channels[#{i}] is empty" if ch.empty? }
+        w["channels"].each_with_index { |ch, i| raise InvalidRequestError, "channels[#{i}] is empty" if ch.empty? }
       end
       w
     end

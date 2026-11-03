@@ -77,11 +77,18 @@ end
 
 def kind(f) = KINDS[f.type] || WRAPPERS[f.type] || f.type
 
+# The presence wrappers which are messages of their own, as the update
+# messages of device_update: a field holding one is sent whenever it is set,
+# even empty (shape :presence). BoolValue and Int32Value are optional scalars.
+PRESENCE = Set.new
+
 def shape(f)
   if f.map?
     :map
+  elsif f.list?
+    :list
   else
-    f.list? ? :list : :one
+    PRESENCE.include?(f.type) ? :presence : :one
   end
 end
 
@@ -210,8 +217,10 @@ def emit_message(out, m, indent, protocol)
   members = m.fields.map { ":#{it.name}" }.join(", ")
   out << "#{indent}class #{m.name} < Data.define#{"(#{members})" unless members.empty?}\n"
   out << "#{indent}  include Message\n\n"
-  unless m.fields.empty?
-    params = m.fields.map { "#{it.name}: #{default(it)}" }
+  params = message_keywords(m)
+  # Data's own initialize requires every field: one is written when some have
+  # defaults.
+  unless params.all? { it.end_with?(":") }
     sig = signature("#{indent}  ", "initialize", params)
     out << (sig.include?("\n") ? "#{sig}\n#{indent}    super\n#{indent}  end\n\n" : "#{sig} = super\n\n")
   end
@@ -238,6 +247,62 @@ def emit_message(out, m, indent, protocol)
     out << "#{indent}    )\n"
   end
   out << "#{indent}  end\n#{indent}end\n"
+end
+
+# The checks before sending of the fields the proto marks required, made on
+# the request's JSON: every request, by its method, and each message a request
+# holds - directly or in a list - with required fields of its own or below,
+# by its name. Fields whose empty value has a meaning are not checked: empty
+# is one of their values.
+def emit_required(out, s, cmds)
+  need = {}
+  needs = lambda do |name|
+    return need[name] if need.key?(name)
+
+    need[name] = false # a message holding itself checks nothing more
+    m = s.by_name[name]
+    need[name] = m.fields.any? do |f|
+      (Proto.required?(f) && !Proto.empty_has_meaning?(f)) ||
+        (s.by_name.key?(f.type) && !Proto.presence_wrapper?(s.by_name[f.type]) && needs.call(f.type))
+    end
+  end
+  checks = lambda do |m|
+    m.fields.filter_map do |f|
+      req = Proto.required?(f) && !Proto.empty_has_meaning?(f)
+      nested = s.by_name.key?(f.type) && !Proto.presence_wrapper?(s.by_name[f.type]) && needs.call(f.type)
+      if nested && f.map?
+        abort "api.proto: #{m.name}.#{f.name}: a map of messages with required fields is not supported"
+      end
+      next unless req || nested
+
+      [f.name, req, nested ? f.type : nil, f.list?]
+    end
+  end
+  entries = cmds.map { [it.method, checks.call(it.request)] }
+  seen = Set.new
+  visit = lambda do |m|
+    m.fields.each do |f|
+      next unless s.by_name.key?(f.type) && !Proto.presence_wrapper?(s.by_name[f.type]) && needs.call(f.type)
+      next unless seen.add?(f.type)
+
+      entries << [f.type, checks.call(s.by_name[f.type])]
+      visit.call(s.by_name[f.type])
+    end
+  end
+  cmds.each { visit.call(it.request) }
+
+  out << "  # The fields each request - by its method - and each message in a request -\n"
+  out << "  # by its name - must have a value in, and the messages in it to check:\n"
+  out << "  # [field, required, the message's name or nil, a list]. Checked on the\n"
+  out << "  # request's JSON, which leaves out a field at its zero value.\n"
+  out << "  #\n  # @api private\n  REQUIRED = {\n"
+  out << entries.map { |key, fields|
+    one = "    #{key.inspect} => #{fields.inspect}.freeze"
+    next one if one.size <= 100
+
+    "    #{key.inspect} => [\n#{fields.map { "      #{it.inspect}" }.join(",\n")}\n    ].freeze"
+  }.join(",\n")
+  out << "\n  }.freeze\n\n"
 end
 
 def emit_requests(out, cmds)
@@ -327,14 +392,29 @@ def emit_methods(out, name, intro, cmds)
   out << "  end\n"
 end
 
+# The fields of a message the proto marks plainly "Required." - "Required
+# unless ..." and "Required when ..." stay optional - recorded in
+# REQUIRED_FIELDS. A bool cannot be one: false and unset are one value.
+def required_fields(m)
+  m.fields.select { Proto.required?(it) }.each do |f|
+    abort "api.proto: #{m.name}.#{f.name}: a bool cannot be required" if f.type == "bool"
+    REQUIRED_FIELDS << "#{m.name}.#{f.name}"
+  end
+end
+
 # The keywords of a request's fields: required where the proto marks the field
-# plainly "Required." - "Required unless ..." stays optional - nil by default
-# otherwise. Required ones first, as Ruby style has them: keywords have no
-# order a caller sees.
+# required, nil by default otherwise. Required ones first, as Ruby style has
+# them: keywords have no order a caller sees.
 def keywords(request)
-  required, optional = request.fields.partition { it.doc.join(" ").match?(/\bRequired\./) }
-  required.each { REQUIRED_FIELDS << "#{request.name}.#{it.name}" }
-  [*required.map { "#{it.name}:" }, *optional.map { "#{it.name}: nil" }]
+  required = required_fields(request)
+  [*required.map { "#{it.name}:" }, *(request.fields - required).map { "#{it.name}: nil" }]
+end
+
+# The keywords of a message type's initialize: its required fields without a
+# default, as a request's are, the others at their zero value.
+def message_keywords(m)
+  required = required_fields(m)
+  [*required.map { "#{it.name}:" }, *(m.fields - required).map { "#{it.name}: #{default(it)}" }]
 end
 
 # The fields made required keywords, as "Message.field": checked against
@@ -452,6 +532,10 @@ end
 
 def generate
   api = Proto.parse(File.read(File.join(ROOT, "proto/api.proto")), "api.proto")
+  proxy = Proto.parse(File.read(File.join(ROOT, "proto/proxy.proto")), "proxy.proto")
+  [api, proxy].each do |schema|
+    schema.messages.each { PRESENCE << it.name if Proto.presence_wrapper?(it) && !WRAPPERS.key?(it.name) }
+  end
   cmds = commands(api)
   skip = skipped(api, cmds)
   # A request which is also another message's field would need a type.
@@ -477,6 +561,7 @@ def generate
   methods << "  #\n  # @api private\n  API_METHODS = {\n    \"batch\" => false,\n"
   methods << cmds.map { "    #{it.method.inspect} => #{it.pro_only}" }.join(",\n")
   methods << "\n  }.freeze\n\n"
+  emit_required(methods, api, cmds)
   emit_requests(methods, cmds)
   methods << "\n"
   emit_client_methods(methods, cmds)
@@ -486,7 +571,6 @@ def generate
   emit_command_methods(methods, cmds)
   methods << "end\n"
 
-  proxy = Proto.parse(File.read(File.join(ROOT, "proto/proxy.proto")), "proxy.proto")
   proxy_types = +format(HEADER, "proxy.proto")
   proxy_types << "module Cent\n  module Proxy\n"
   proxy_messages(proxy).each_with_index do |m, i|

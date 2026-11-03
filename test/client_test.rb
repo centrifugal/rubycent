@@ -30,12 +30,12 @@ class ClientTest < Minitest::Test
 
     assert_operator methods.size, :>, 35
     methods.each do |m|
-      # Required keywords given nil: present, but unset.
-      required = Cent::Client.instance_method(m).parameters.filter_map { |t, n| [n, nil] if t == :keyreq }.to_h
-      args = m == :publish ? { channel: "c", data: 1 } : required
+      # Every field set, so that the checks of the required ones let it through.
+      args = APIProto.filled(m)
       res = @client.public_send(m, **args)
 
       assert_equal "#{Fake::ENDPOINT}/#{m}", @fake.requests.last.url
+      assert_equal args.keys.map(&:name).sort, @fake.requests.last.json.keys.sort, m
       assert_equal "#{m.to_s.split("_").map(&:capitalize).join}Result", res.class.name.delete_prefix("Cent::"), m
     end
   end

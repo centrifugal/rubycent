@@ -4,7 +4,8 @@ module Cent
   # Encoding requests and decoding replies, for the generated code: each field
   # is put or got by its kind - :str, :bool, :int, :float, :json (a payload),
   # :bool_value and :int32_value (protobuf wrappers), or a message's class - and
-  # its shape - :one, :list or :map.
+  # its shape - :one, :list, :map, or :presence for a message which is a
+  # presence wrapper, sent whenever it is set, even empty.
   #
   # @api private
   module Wire
@@ -13,8 +14,9 @@ module Cent
     module_function
 
     # Sets +w[key]+ to the encoded field +v+, unless it is unset or at its zero
-    # value: nil, "", false, 0, an empty list or map, a message with nothing set.
-    # +where+ prefixes the field's name in error messages.
+    # value: nil, "", false, 0, an empty list or map, a message with nothing set
+    # - but a presence wrapper, sent as {} when set empty. +where+ prefixes the
+    # field's name in error messages.
     def put(w, key, v, where, kind, shape = :one)
       return if v.nil?
 
@@ -33,13 +35,13 @@ module Cent
             name = map_key(k, "#{where}#{key}")
             h[name] = value(kind, item, "#{where}#{key}[#{name.inspect}]", true)
           end
-        else value(kind, v, "#{where}#{key}", false)
+        else value(kind, v, "#{where}#{key}", shape == :presence)
         end
       w[key] = out unless out.nil?
     end
 
     # One value of a field, encoded; nil for a zero value, unless +keep+ (an
-    # item of a list or map).
+    # item of a list or map, a presence wrapper).
     def value(kind, v, path, keep)
       case kind
       when :str, :bool, :int, :float then scalar(kind, v, path, keep)
@@ -104,7 +106,41 @@ module Cent
         raise InvalidRequestError,
               "#{path}.#{name} is not a field of #{short(klass)}#{": did you mean #{like}?" if like}"
       end
+      missing = required_members(klass).find { !v.key?(it) }
+      raise InvalidRequestError, "#{path}.#{missing} is required" if missing
+
       klass.new(**v)
+    end
+
+    # The fields a message type's initialize requires: every one when it is
+    # Data's own, which the generator leaves when no field has a default.
+    def required_members(klass)
+      params = klass.instance_method(:initialize).parameters
+      return klass.members if params == [[:rest]]
+
+      params.filter_map { |t, name| name if t == :keyreq }
+    end
+
+    # Raises InvalidRequestError naming the first field the proto marks
+    # required which the JSON +w+ of the request or message +key+ - its method
+    # or name in REQUIRED - leaves out: unset, or at its zero value. A nested
+    # message is checked when it is set, a list's each.
+    def check_required(w, key, path = "")
+      REQUIRED.fetch(key).each do |name, required, nested, list|
+        v = w[name]
+        if v.nil?
+          raise InvalidRequestError, "#{path}#{name} is required" if required
+
+          next
+        end
+        next unless nested
+
+        if list
+          v.each_with_index { |item, i| check_required(item, nested, "#{path}#{name}[#{i}].") }
+        else
+          check_required(v, nested, "#{path}#{name}.")
+        end
+      end
     end
 
     def map_key(k, path)

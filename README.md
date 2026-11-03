@@ -42,6 +42,15 @@ unless Centrifugo did everything asked. A nested message is its class or a
 Hash of its fields: `since: { offset: 5, epoch: "xyz" }`. A batch and commands
 have the same methods: `batch.publish(...)`, `Cent::Command.publish(...)`.
 
+A field `api.proto` marks required is a required keyword - of the method, or of
+a nested message's class - and must have a value: given `nil`, `""`, `0` or a
+message with nothing set, the call raises `Cent::InvalidRequestError` naming
+it, as in `limit_strategy.rate_limit.policies[0].rate is required`, before
+anything is sent. A field at its zero value is not sent, nor a message with
+nothing set - but for the updates of `device_update`, sent whenever given:
+`timezone_update: { timezone: "" }` clears the timezone, and leaving
+`timezone_update` out changes nothing.
+
 Create the client once and share it - a constant, an initializer: it is safe
 for concurrent use from threads, and keeps its connections to Centrifugo alive
 between calls. Under a fiber scheduler - Async, Falcon - calls wait without
