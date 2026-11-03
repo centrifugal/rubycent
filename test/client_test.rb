@@ -47,8 +47,11 @@ class ClientTest < Minitest::Test
       next if m == :broadcast_with_retry
 
       if m.end_with?("_all")
-        # A paged method's iterator takes its arguments, and a block.
-        assert_equal [*params.call(Cent::Client.instance_method(m.name.delete_suffix("_all"))), %i[block block]],
+        # A paged method's iterator takes its arguments, page_timeout instead of
+        # timeout, and a block.
+        method = params.call(Cent::Client.instance_method(m.name.delete_suffix("_all")))
+
+        assert_equal [*method[0...-1], %i[key page_timeout], %i[block block]],
                      params.call(Cent::Client.instance_method(m)), m
         next
       end
@@ -248,7 +251,7 @@ class ClientTest < Minitest::Test
       assert_match(/timeout must be a positive number/, err.message)
       refute Cent.retryable?(err)
       assert_raises(Cent::InvalidRequestError) { @client.broadcast_with_retry(channels: ["a"], data: 1, timeout: t) }
-      assert_raises(Cent::InvalidRequestError) { @client.history_all(channel: "c", limit: 1, timeout: t) }
+      assert_raises(Cent::InvalidRequestError) { @client.history_all(channel: "c", limit: 1, page_timeout: t) }
       b = @client.new_batch
       b.info
       assert_raises(Cent::InvalidRequestError) { b.send(timeout: t) }

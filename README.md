@@ -187,14 +187,17 @@ The methods which return a page at a time - `history`, `device_list`,
 `device_topic_list`, `user_topic_list` and `map_read_state` - each have an
 `_all` method taking the same arguments, which reads page after page: with a
 block it yields every item, without one it returns an `Enumerator`. A page is
-read when the iteration reaches it, so `first(10)` or a `break` reads no more:
+read when the iteration reaches it, so `first(10)` or a `break` reads no more.
+An iteration lasts as long as your loop, so it takes no `timeout:`;
+`page_timeout:` bounds each page's request instead, replacing
+`request_timeout` for it:
 
 ```ruby
 client.history_all(channel: "news", limit: 100) do |item|
   archive(item.data)
   last = item.position   # resume with since: last, or give a client recover_since
 end
-client.device_list_all(filter: { users: ["42"] }).each_slice(50) { |devices| notify(devices) }
+client.device_list_all(filter: { users: ["42"] }, page_timeout: 30).each_slice(50) { |devices| notify(devices) }
 ```
 
 `history_all` needs a `limit` of 1 or more, the page size, and reads forward

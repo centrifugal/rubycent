@@ -350,11 +350,11 @@ module Cent
       end
     end
 
-    def deadline(timeout)
+    def deadline(timeout, name = "timeout")
       return HTTP.now + @request_timeout if timeout.nil?
       # Zero is refused as a negative is: nil is the way to say "the default".
       unless timeout.is_a?(Numeric) && timeout.positive?
-        raise InvalidRequestError, "timeout must be a positive number of seconds; nil for request_timeout"
+        raise InvalidRequestError, "#{name} must be a positive number of seconds; nil for request_timeout"
       end
 
       HTTP.now + timeout

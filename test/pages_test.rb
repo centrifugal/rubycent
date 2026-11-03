@@ -168,6 +168,47 @@ class PagesTest < Minitest::Test
     assert(@fake.bodies("map_read_state").all? { it["revision_offset"] == 7 && it["revision_epoch"] == "e0" })
   end
 
+  # page_timeout bounds each page's request, replacing request_timeout for it,
+  # longer or shorter; without it each page gets request_timeout. The
+  # iteration itself has no timeout: it lasts as long as the caller's loop.
+  def test_page_timeout_bounds_each_page
+    serve_history(5)
+    client = @fake.client(request_timeout: 1)
+    client.history_all(channel: "c", limit: 2).to_a
+
+    assert(@fake.requests.all? { (it.timeout - 1).abs < 0.1 })
+    [5, 0.2].each do |t|
+      @fake.requests.clear
+      client.history_all(channel: "c", limit: 2, page_timeout: t).to_a
+
+      assert_equal 3, @fake.requests.size
+      assert(@fake.requests.all? { (it.timeout - t).abs < 0.1 }, "page_timeout #{t}")
+    end
+    [0, 0.0, -1].each do |t|
+      err = assert_raises(Cent::InvalidRequestError) { client.device_list_all(page_timeout: t) }
+      assert_match(/page_timeout must be a positive number/, err.message)
+    end
+    assert_raises(ArgumentError) { client.history_all(channel: "c", limit: 2, timeout: 1) }
+  end
+
+  # A page slower than request_timeout finishes under a longer page_timeout,
+  # and a shorter one ends it.
+  def test_a_slow_page_and_page_timeout
+    slow = lambda do |url, _headers, _body, timeout|
+      raise Cent::TimeoutError, "timed out" if timeout < 0.15
+
+      sleep 0.15
+      [200, {}, JSON.generate({ "result" => { "items" => [{ "id" => url[-4..] }], "next_cursor" => "" } })]
+    end
+    client = Cent::Client.new(api_endpoint: Fake::ENDPOINT, http_client: slow, request_timeout: 0.1)
+
+    assert_raises(Cent::TimeoutError) { client.device_list_all.to_a }
+    assert_equal 1, client.device_list_all(page_timeout: 1).to_a.size
+    assert_raises(Cent::TimeoutError) do
+      Cent::Client.new(api_endpoint: Fake::ENDPOINT, http_client: slow).device_list_all(page_timeout: 0.05).to_a
+    end
+  end
+
   def test_positions
     @fake.on("history", { "publications" => [], "offset" => 9, "epoch" => "h" })
     @fake.on("map_read_state", { "offset" => 3, "epoch" => "s" })

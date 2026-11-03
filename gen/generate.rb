@@ -36,7 +36,7 @@ DOC_TYPES = { str: "String", bool: "Boolean", int: "Integer", float: "Float", js
 DEFAULTS = { str: '""', bool: "false", int: "0", float: "0.0" }.freeze
 
 # Names the methods take besides a request's fields.
-OWN_PARAMS = %w[timeout max_attempts attempt_timeout].freeze
+OWN_PARAMS = %w[timeout max_attempts attempt_timeout page_timeout].freeze
 RUBY_KEYWORDS = %w[
   BEGIN END alias and begin break case class def defined? do else elsif end ensure false for if in
   module next nil not or redo rescue retry return self super then true undef unless until when while yield
@@ -399,9 +399,10 @@ PAGED = {
 
 PAGES_DOC = <<~DOC.lines(chomp: true)
   Returns an Enumerator, or with a block, yields each item and returns nil. A
-  page is read when the iteration reaches it, each call bounded by timeout,
-  and leaving the iteration early reads no further page. An error raises
-  from the iteration, after the items before it.
+  page is read when the iteration reaches it, and leaving the iteration early
+  reads no further page. An error raises from the iteration, after the items
+  before it. The iteration lasts as long as the caller's loop: page_timeout
+  bounds each page's request, as attempt_timeout bounds a retry's attempt.
 DOC
 
 TIMEOUT_DOC = "@param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or " \
@@ -562,10 +563,11 @@ def emit_client_methods(out, cmds)
         out << "\n"
         pro = c.pro_only ? ["", "Centrifugo PRO only."] : []
         doc = [*text, "", *PAGES_DOC, *pro, "", *param_docs(c.request),
-               "@param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.",
+               "@param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing",
+               "  request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.",
                "@yieldparam item [#{item}]", "@return [Enumerator<#{item}>, nil]", "@raise [Error]"]
-        method_body(out, doc, signature("    ", "#{c.method}_all", [*params, "timeout: nil"], block: "block"),
-                    ["pages(#{c.method.inspect}, timeout, block) do", "  #{call.gsub("\n", "\n  ")}", "end"])
+        method_body(out, doc, signature("    ", "#{c.method}_all", [*params, "page_timeout: nil"], block: "block"),
+                    ["pages(#{c.method.inspect}, page_timeout, block) do", "  #{call.gsub("\n", "\n  ")}", "end"])
       end
     end
   end

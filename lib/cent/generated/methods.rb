@@ -1078,9 +1078,10 @@ module Cent
     # on. Each publication comes with its position, as a HistoryItem.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
-    # page is read when the iteration reaches it, each call bounded by timeout,
-    # and leaving the iteration early reads no further page. An error raises
-    # from the iteration, after the items before it.
+    # page is read when the iteration reaches it, and leaving the iteration early
+    # reads no further page. An error raises from the iteration, after the items
+    # before it. The iteration lasts as long as the caller's loop: page_timeout
+    # bounds each page's request, as attempt_timeout bounds a retry's attempt.
     #
     # @param channel [String, nil] The name of the channel. Required.
     # @param limit [Integer, nil] The maximum number of publications to return; -1 returns all
@@ -1088,7 +1089,8 @@ module Cent
     #   returned, without publications.
     # @param since [StreamPosition, Hash, nil] Returns publications after this stream position.
     # @param reverse [Boolean, nil] Iterates in reverse order, from latest to earliest.
-    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing
+    #   request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.
     # @yieldparam item [HistoryItem]
     # @return [Enumerator<HistoryItem>, nil]
     # @raise [Error]
@@ -1097,10 +1099,10 @@ module Cent
       limit: nil,
       since: nil,
       reverse: nil,
-      timeout: nil,
+      page_timeout: nil,
       &block
     )
-      pages("history", timeout, block) do
+      pages("history", page_timeout, block) do
         Requests.history(channel, limit, since, reverse)
       end
     end
@@ -1464,9 +1466,10 @@ module Cent
     # while iterating may or may not be seen.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
-    # page is read when the iteration reaches it, each call bounded by timeout,
-    # and leaving the iteration early reads no further page. An error raises
-    # from the iteration, after the items before it.
+    # page is read when the iteration reaches it, and leaving the iteration early
+    # reads no further page. An error raises from the iteration, after the items
+    # before it. The iteration lasts as long as the caller's loop: page_timeout
+    # bounds each page's request, as attempt_timeout bounds a retry's attempt.
     #
     # Centrifugo PRO only.
     #
@@ -1480,7 +1483,8 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of devices to return.
-    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing
+    #   request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.
     # @yieldparam item [Device]
     # @return [Enumerator<Device>, nil]
     # @raise [Error]
@@ -1492,10 +1496,10 @@ module Cent
       include_webpush_keys: nil,
       cursor: nil,
       limit: nil,
-      timeout: nil,
+      page_timeout: nil,
       &block
     )
-      pages("device_list", timeout, block) do
+      pages("device_list", page_timeout, block) do
         Requests.device_list(
           filter,
           include_total_count,
@@ -1544,9 +1548,10 @@ module Cent
     # device_list_all reads devices.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
-    # page is read when the iteration reaches it, each call bounded by timeout,
-    # and leaving the iteration early reads no further page. An error raises
-    # from the iteration, after the items before it.
+    # page is read when the iteration reaches it, and leaving the iteration early
+    # reads no further page. An error raises from the iteration, after the items
+    # before it. The iteration lasts as long as the caller's loop: page_timeout
+    # bounds each page's request, as attempt_timeout bounds a retry's attempt.
     #
     # Centrifugo PRO only.
     #
@@ -1557,7 +1562,8 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of items to return.
-    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing
+    #   request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.
     # @yieldparam item [DeviceTopic]
     # @return [Enumerator<DeviceTopic>, nil]
     # @raise [Error]
@@ -1567,10 +1573,10 @@ module Cent
       include_device: nil,
       cursor: nil,
       limit: nil,
-      timeout: nil,
+      page_timeout: nil,
       &block
     )
-      pages("device_topic_list", timeout, block) do
+      pages("device_topic_list", page_timeout, block) do
         Requests.device_topic_list(
           filter,
           include_total_count,
@@ -1634,9 +1640,10 @@ module Cent
     # device_list_all reads devices.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
-    # page is read when the iteration reaches it, each call bounded by timeout,
-    # and leaving the iteration early reads no further page. An error raises
-    # from the iteration, after the items before it.
+    # page is read when the iteration reaches it, and leaving the iteration early
+    # reads no further page. An error raises from the iteration, after the items
+    # before it. The iteration lasts as long as the caller's loop: page_timeout
+    # bounds each page's request, as attempt_timeout bounds a retry's attempt.
     #
     # Centrifugo PRO only.
     #
@@ -1646,7 +1653,8 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of items to return.
-    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing
+    #   request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.
     # @yieldparam item [UserTopic]
     # @return [Enumerator<UserTopic>, nil]
     # @raise [Error]
@@ -1655,10 +1663,10 @@ module Cent
       include_total_count: nil,
       cursor: nil,
       limit: nil,
-      timeout: nil,
+      page_timeout: nil,
       &block
     )
-      pages("user_topic_list", timeout, block) do
+      pages("user_topic_list", page_timeout, block) do
         Requests.user_topic_list(filter, include_total_count, cursor, limit)
       end
     end
@@ -1920,9 +1928,10 @@ module Cent
     # a MapStateItem.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
-    # page is read when the iteration reaches it, each call bounded by timeout,
-    # and leaving the iteration early reads no further page. An error raises
-    # from the iteration, after the items before it.
+    # page is read when the iteration reaches it, and leaving the iteration early
+    # reads no further page. An error raises from the iteration, after the items
+    # before it. The iteration lasts as long as the caller's loop: page_timeout
+    # bounds each page's request, as attempt_timeout bounds a retry's attempt.
     #
     # @param channel [String, nil] The name of the map channel. Required.
     # @param cursor [String, nil] The pagination cursor from the previous page. Empty starts
@@ -1939,7 +1948,8 @@ module Cent
     # @param revision_epoch [String, nil] The epoch of the position from a previous state
     #   read. If the epoch changed, the call fails with an unrecoverable
     #   position error.
-    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @param page_timeout [Numeric, nil] Seconds bounding each page's request, replacing
+    #   request_timeout for it, longer or shorter: request_timeout when nil. Zero is refused.
     # @yieldparam item [MapStateItem]
     # @return [Enumerator<MapStateItem>, nil]
     # @raise [Error]
@@ -1951,10 +1961,10 @@ module Cent
       asc: nil,
       revision_offset: nil,
       revision_epoch: nil,
-      timeout: nil,
+      page_timeout: nil,
       &block
     )
-      pages("map_read_state", timeout, block) do
+      pages("map_read_state", page_timeout, block) do
         Requests.map_read_state(
           channel,
           cursor,

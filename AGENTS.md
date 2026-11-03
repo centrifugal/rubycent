@@ -153,7 +153,9 @@ creates the GitHub release.
   `broadcast_with_retry`'s `attempt_timeout:` for each attempt - replaces it,
   longer or shorter. A `Timeout.timeout` around a call only cuts it short.
 - **The `<method>_all` iterators are on the client only**, not on a batch or
-  `Command`: they read a page when the iteration reaches it.
+  `Command`: they read a page when the iteration reaches it. They take
+  `page_timeout:`, not `timeout:` (spec 3.2, 3.8): a call's timeout bounds the
+  whole call, and an iteration lasts as long as the caller's loop.
 - **`BoolValue` fields are `true`, `false` or nil.** nil leaves the server's
   setting alone, which `false` cannot say.
 - **An automatic batch always goes to `/api/batch`**, even with one command,

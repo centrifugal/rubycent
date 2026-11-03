@@ -99,13 +99,13 @@ module Cent
     # The items of every page of +method+, the first page's request the JSON
     # the block builds: an Enumerator, or each yielded to +block+. The request
     # is checked here, before anything is sent.
-    def pages(method, timeout, block, &)
-      deadline(timeout) # timeout: checked at the call, as the request is
+    def pages(method, page_timeout, block, &)
+      deadline(page_timeout, "page_timeout") # checked at the call, as the request is
       first = encode_request(method, &)
       check_history(first) if method == "history"
-      return Enumerator.new { |y| each_page(method, first, timeout) { y << it } } unless block
+      return Enumerator.new { |y| each_page(method, first, page_timeout) { y << it } } unless block
 
-      each_page(method, first, timeout, &block)
+      each_page(method, first, page_timeout, &block)
       nil
     end
 
@@ -120,14 +120,14 @@ module Cent
       raise InvalidRequestError, "invalid history request: history_all reads forward only: reverse is not supported"
     end
 
-    def each_page(method, w, timeout)
+    def each_page(method, w, page_timeout)
       result_class, items, cursor = PAGED.fetch(method)
       # map_read_state's later pages are read at the first page's revision,
       # unless the request pins one itself.
       pin = method == "map_read_state" && !w.key?("revision_offset") && !w.key?("revision_epoch")
       state = StreamPosition.new(offset: w["revision_offset"] || 0, epoch: w["revision_epoch"] || "") unless pin
       loop do
-        res = invoke(method, result_class, timeout) { w }
+        res = invoke(method, result_class, page_timeout) { w }
         page = res.public_send(items)
         state ||= res.position if method == "map_read_state"
         page.each do |item|
