@@ -1075,7 +1075,7 @@ module Cent
     # while iterating may or may not be seen. An epoch which changed since a
     # page was read - the history was lost, with a Redis restart say - raises
     # UnrecoverablePositionError: reading again from the start is the only way
-    # on.
+    # on. Each publication comes with its position, as a HistoryItem.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
     # page is read when the iteration reaches it, each call bounded by timeout,
@@ -1089,8 +1089,8 @@ module Cent
     # @param since [StreamPosition, Hash, nil] Returns publications after this stream position.
     # @param reverse [Boolean, nil] Iterates in reverse order, from latest to earliest.
     # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
-    # @yieldparam item [Publication]
-    # @return [Enumerator<Publication>, nil]
+    # @yieldparam item [HistoryItem]
+    # @return [Enumerator<HistoryItem>, nil]
     # @raise [Error]
     def history_all(
       channel:,
@@ -1916,7 +1916,8 @@ module Cent
     # UnrecoverablePositionError instead of mixing two states: read again from
     # the first page then. Entries changed while iterating may be seen in either
     # version; for a consistent view, read the changes since the first page's
-    # position with map_read_stream.
+    # position with map_read_stream. Each entry comes with that position, as
+    # a MapStateItem.
     #
     # Returns an Enumerator, or with a block, yields each item and returns nil. A
     # page is read when the iteration reaches it, each call bounded by timeout,
@@ -1939,8 +1940,8 @@ module Cent
     #   read. If the epoch changed, the call fails with an unrecoverable
     #   position error.
     # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
-    # @yieldparam item [MapEntry]
-    # @return [Enumerator<MapEntry>, nil]
+    # @yieldparam item [MapStateItem]
+    # @return [Enumerator<MapStateItem>, nil]
     # @raise [Error]
     def map_read_state_all(
       channel:,

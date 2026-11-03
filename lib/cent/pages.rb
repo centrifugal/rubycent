@@ -41,6 +41,44 @@ module Cent
     def position = StreamPosition.new(offset:, epoch:)
   end
 
+  # A publication read by history_all, with the epoch of the stream it was read
+  # from. The publication's fields read directly - +item.data+, +item.offset+ -
+  # and {#position} is where it is in the channel's stream: the since of a
+  # history call resuming after it, or a subscription's recover_since.
+  #
+  # @!attribute [r] publication
+  #   @return [Publication]
+  # @!attribute [r] epoch
+  #   @return [String] the epoch of the channel's stream
+  class HistoryItem < Data.define(:publication, :epoch)
+    include Message
+
+    Publication.members.each { |m| define_method(m) { publication.public_send(m) } }
+
+    # @return [StreamPosition] the publication's offset and the stream's epoch
+    def position = StreamPosition.new(offset: publication.offset, epoch:)
+  end
+
+  # An entry read by map_read_state_all, with the position of the state it was
+  # read at: the first page's, every later page being read at it, or the
+  # revision the request gave. The entry's fields read directly - +item.key+,
+  # +item.data+ - and map_read_stream from {#position} follows the state with
+  # every change made since.
+  #
+  # @!attribute [r] entry
+  #   @return [MapEntry]
+  # @!attribute [r] state
+  #   @return [StreamPosition] the position of the map's state the entry was
+  #     read at
+  class MapStateItem < Data.define(:entry, :state)
+    include Message
+
+    MapEntry.members.each { |m| define_method(m) { entry.public_send(m) } }
+
+    # @return [StreamPosition] the state's position, {#state}
+    def position = state
+  end
+
   # The <method>_all iterators of Client (spec 3.8): paging written once over
   # the cursor, and once for history.
   #
@@ -81,15 +119,23 @@ module Cent
       raise InvalidRequestError, "invalid history request: history_all reads forward only: reverse is not supported"
     end
 
-    def each_page(method, w, timeout, &)
+    def each_page(method, w, timeout)
       result_class, items, cursor = PAGED.fetch(method)
       # map_read_state's later pages are read at the first page's revision,
       # unless the request pins one itself.
       pin = method == "map_read_state" && !w.key?("revision_offset") && !w.key?("revision_epoch")
+      state = StreamPosition.new(offset: w["revision_offset"] || 0, epoch: w["revision_epoch"] || "") unless pin
       loop do
         res = invoke(method, result_class, timeout) { w }
         page = res.public_send(items)
-        page.each(&)
+        state ||= res.position if method == "map_read_state"
+        page.each do |item|
+          yield case method
+                when "history" then HistoryItem.new(publication: item, epoch: res.epoch)
+                when "map_read_state" then MapStateItem.new(entry: item, state:)
+                else item
+                end
+        end
         if cursor.nil?
           break if page.size < w["limit"]
 

@@ -119,7 +119,10 @@ class ApiTest < IntegrationTest
     ch = unique
     positions = Array.new(5) { client.publish(channel: ch, data: { n: it }).position }
 
-    assert_equal((0...5).to_a, client.history_all(channel: ch, limit: 2).map { it.data["n"] })
+    items = client.history_all(channel: ch, limit: 2).to_a
+
+    assert_equal((0...5).to_a, items.map { it.data["n"] })
+    assert_equal positions, items.map(&:position)
     assert_equal([3, 4], client.history(channel: ch, since: positions[2], limit: 10).publications.map { it.data["n"] })
     assert_equal positions.last, client.history(channel: ch).position
     stale = Cent::StreamPosition.new(offset: 1, epoch: "gone")
@@ -133,7 +136,10 @@ class ApiTest < IntegrationTest
     keys = Array.new(5) { "k#{it}" }
     last = keys.map { client.map_publish(channel: ch, key: it, data: {}).position }.last
 
-    assert_equal keys, client.map_read_state_all(channel: ch, limit: 2).map(&:key).sort
+    entries = client.map_read_state_all(channel: ch, limit: 2).to_a
+
+    assert_equal keys, entries.map(&:key).sort
+    assert_equal [last], entries.map(&:position).uniq
     state = client.map_read_state(channel: ch, limit: 1)
 
     assert_equal last, state.position

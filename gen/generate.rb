@@ -360,7 +360,7 @@ end
 # the items' type, and what the iterator's docs say of its pages. Paging is in
 # Cent::Pages.
 PAGED = {
-  "history" => ["Publication", <<~DOC.lines(chomp: true)],
+  "history" => ["HistoryItem", <<~DOC.lines(chomp: true)],
     Every publication of a channel's history, oldest first, a page of limit
     at a time: from since when it is set, from the start of what the channel
     keeps otherwise. limit is the page size, so it must be 1 or more, and
@@ -369,7 +369,7 @@ PAGED = {
     while iterating may or may not be seen. An epoch which changed since a
     page was read - the history was lost, with a Redis restart say - raises
     UnrecoverablePositionError: reading again from the start is the only way
-    on.
+    on. Each publication comes with its position, as a HistoryItem.
   DOC
   "device_list" => ["Device", <<~DOC.lines(chomp: true)],
     Every device the request selects, a page at a time: limit is the page
@@ -384,7 +384,7 @@ PAGED = {
     Every user topic the request selects, a page at a time, as
     device_list_all reads devices.
   DOC
-  "map_read_state" => ["MapEntry", <<~DOC.lines(chomp: true)]
+  "map_read_state" => ["MapStateItem", <<~DOC.lines(chomp: true)]
     Every entry of a map channel's state, a page at a time: limit is the page
     size. Every page after the first is read at the first one's revision - its
     position, as revision_offset and revision_epoch, unless the request sets
@@ -392,7 +392,8 @@ PAGED = {
     UnrecoverablePositionError instead of mixing two states: read again from
     the first page then. Entries changed while iterating may be seen in either
     version; for a consistent view, read the changes since the first page's
-    position with map_read_stream.
+    position with map_read_stream. Each entry comes with that position, as
+    a MapStateItem.
   DOC
 }.freeze
 

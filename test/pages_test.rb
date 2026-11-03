@@ -50,6 +50,32 @@ class PagesTest < Minitest::Test
     end
   end
 
+  def test_history_all_and_map_read_state_all_yield_positions
+    serve_history(3, epoch: "e9")
+    items = @client.history_all(channel: "c", limit: 2).to_a
+
+    assert_instance_of Cent::HistoryItem, items.first
+    assert_equal [1, 2, 3], items.map(&:data)
+    assert_equal [1, 2, 3].map { Cent::StreamPosition.new(offset: it, epoch: "e9") }, items.map(&:position)
+    assert_equal({ "data" => 1, "info" => nil, "offset" => 1, "tags" => {} }, items.first.publication.as_json)
+    # Resuming from an item reads what came after it.
+    @client.history_all(channel: "c", limit: 2, since: items[1].position).to_a
+
+    assert_equal({ "offset" => 2, "epoch" => "e9" }, @fake.bodies("history").last["since"])
+
+    entry = ->(i) { { "key" => "k#{i}", "offset" => i } }
+    serve_cursor("map_read_state", 3, 2, items: "entries", cursor: "cursor",
+                                         extra: { "offset" => 42, "epoch" => "s1" }, &entry)
+    entries = @client.map_read_state_all(channel: "m", limit: 2).to_a
+
+    assert_equal %w[k1 k2 k3], entries.map(&:key)
+    assert_equal [1, 2, 3], entries.map(&:offset)
+    assert(entries.all? { it.position == Cent::StreamPosition.new(offset: 42, epoch: "s1") && it.state == it.position })
+    pinned = @client.map_read_state_all(channel: "m", limit: 2, revision_offset: 7, revision_epoch: "s0").to_a
+
+    assert(pinned.all? { it.position == Cent::StreamPosition.new(offset: 7, epoch: "s0") })
+  end
+
   def test_history_all_from_since_and_with_a_block
     serve_history(5)
     got = []

@@ -188,13 +188,19 @@ block it yields every item, without one it returns an `Enumerator`. A page is
 read when the iteration reaches it, so `first(10)` or a `break` reads no more:
 
 ```ruby
-client.history_all(channel: "news", limit: 100) { |pub| archive(pub) }
+client.history_all(channel: "news", limit: 100) do |item|
+  archive(item.data)
+  last = item.position   # resume with since: last, or give a client recover_since
+end
 client.device_list_all(filter: { users: ["42"] }).each_slice(50) { |devices| notify(devices) }
 ```
 
 `history_all` needs a `limit` of 1 or more, the page size, and reads forward
-only. `map_read_state_all` reads every page after the first at the first
-one's revision, so that a map reset between pages raises
+only. It yields each publication as a `Cent::HistoryItem`, whose fields read
+as the publication's and whose `position` is where it is in the stream;
+`map_read_state_all` yields each entry as a `Cent::MapStateItem`, its
+`position` the state's, which `map_read_stream` follows. `map_read_state_all`
+reads every page after the first at the first one's revision, so that a map reset between pages raises
 `Cent::UnrecoverablePositionError` rather than mixing two states: start again
 then. Items changed while iterating - a device registered meanwhile - may or
 may not be seen.
