@@ -25,6 +25,12 @@ module Cent
   # text, as it is; ActiveRecord's json types take the object,
   # +JSON.parse(cmd.payload)+ - given the text, they would store a JSON string.
   #
+  # Where the method goes apart from the payload - the outbox table's method
+  # column, a message header or attribute - Centrifugo reads the payload as the
+  # request itself: a JSON string holding it is a bad request there, dropped
+  # with only Centrifugo's log saying so. Only a message which is a whole
+  # command may hold its payload as a string of JSON, for CDC pipelines.
+  #
   # Within a partition a consumer keeps commands in order: a channel's commands
   # keep their order only when every writer derives their partition from the
   # channel the same way - the channel as a Kafka message key, say.

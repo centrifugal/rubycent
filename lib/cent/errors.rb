@@ -156,9 +156,11 @@ module Cent
     def to_s
       s = "unexpected HTTP status #{status_code}"
       if (300..399).cover?(status_code)
-        # Centrifugo's API never redirects: something in front of it does,
-        # which cent does not follow.
-        s += " (a redirect, which cent does not follow: check api_endpoint, http or https say)"
+        # Centrifugo's API never redirects a call: its router redirects only
+        # a path not in canonical form, a doubled slash say, and a proxy in
+        # front of it may redirect http to https.
+        s += " (a redirect, which cent does not follow: check api_endpoint's scheme and path - http or https, " \
+             "a doubled slash)"
       elsif status_code == 404 && @pro_method
         s += " (#{@pro_method} is a Centrifugo PRO method: if other methods work, the server is Centrifugo OSS)"
       elsif status_code == 404

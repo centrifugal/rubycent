@@ -534,7 +534,11 @@ reject it with an error the client receives, or `Cent::Proxy::Disconnect` to
 close the client's connection; any other error fails the request, and goes to
 `on_error` to be logged - without `on_error`, nowhere; `on_error` itself must
 not raise. Error codes are in [400, 1999], disconnect codes in [4000, 4999],
-and a disconnect reason is at most 32 bytes. A block calling a method,
+and a disconnect reason is at most 32 bytes. A block returning nil fails the
+request too: Centrifugo would take a response with nothing in it as accepting
+a subscribe, publish, RPC, map publish or map remove as sent, as refusing a
+connect unless anonymous connections are allowed, and as an expired refresh or
+sub refresh. A block calling a method,
 as here, keeps the logic where it can `return` early and be tested alone; see
 [Rails](#rails) for where each part goes there. Keep proxy endpoints reachable by Centrifugo only:
 whoever can call them can claim to be any user.
