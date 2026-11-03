@@ -403,7 +403,8 @@ PAGES_DOC = <<~DOC.lines(chomp: true)
   from the iteration, after the items before it.
 DOC
 
-TIMEOUT_DOC = "@param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil."
+TIMEOUT_DOC = "@param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or " \
+              "shorter: request_timeout when nil."
 
 BROADCAST_DOC = <<~DOC.lines(chomp: true)
   Channels succeed or fail on their own. It returns when every channel got the
@@ -439,8 +440,9 @@ BROADCAST_RETRY_DOC = <<~DOC.lines(chomp: true)
   - The result holds every channel's last outcome, and the key: retrying later
     with it publishes only into the channels which did not get it.
 
-  timeout, when set, bounds the whole call, waits included; attempt_timeout -
-  request_timeout by default - bounds each attempt.
+  timeout, when set, bounds the whole call, waits included. attempt_timeout is
+  each attempt's own timeout, replacing request_timeout - longer or shorter -
+  as a call's timeout does; timeout still ends an attempt sooner.
 
   The block, when given, is called after an attempt which failed in a way a
   retry may fix, except the last, with a BroadcastAttempt. It returns the
@@ -539,7 +541,8 @@ def emit_client_methods(out, cmds)
       out << "\n"
       doc = [*BROADCAST_RETRY_DOC, "", *param_docs(c.request),
              "@param max_attempts [Integer] Attempts at most, the first included.",
-             "@param attempt_timeout [Numeric, nil] Seconds bounding each attempt: request_timeout when nil.",
+             "@param attempt_timeout [Numeric, nil] Seconds bounding each attempt, replacing request_timeout:",
+             "  request_timeout when nil.",
              "@param timeout [Numeric, nil] Seconds bounding the whole call, waits included: no",
              "  bound but each attempt's when nil.",
              "@yieldparam attempt [BroadcastAttempt] a failed attempt which will be retried",

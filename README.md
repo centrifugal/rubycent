@@ -252,8 +252,12 @@ larger integers silently.
 
 ## Timeouts
 
-Each call takes `timeout:`, in seconds; without one, `request_timeout` - ten
-seconds by default - bounds it:
+`request_timeout` - ten seconds by default - bounds every call. A call's
+`timeout:`, in seconds, replaces it for that call, longer or shorter. Ruby has
+no deadline a call runs under which cent could read: a `Timeout.timeout` or an
+Async task's timeout around a call can only cut it short, with its own error.
+An automatic batch request lasts as long as the longest of its calls' timeouts,
+and so may outlast a shorter one, whose call still returns at its timeout:
 
 ```ruby
 client.info(timeout: 0.5)

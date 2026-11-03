@@ -143,6 +143,10 @@ creates the GitHub release.
   `Wire.check_required`): a field at its zero value is left out of it, so a
   missing and an empty one fail alike, and only presence wrappers are kept
   when empty (shape `:presence`).
+- **No deadline a call runs under** (spec 3.2): Ruby has none cent could
+  read. `request_timeout` bounds every call; `timeout:` - and
+  `broadcast_with_retry`'s `attempt_timeout:` for each attempt - replaces it,
+  longer or shorter. A `Timeout.timeout` around a call only cuts it short.
 - **The `<method>_all` iterators are on the client only**, not on a batch or
   `Command`: they read a page when the iteration reaches it.
 - **`BoolValue` fields are `true`, `false` or nil.** nil leaves the server's

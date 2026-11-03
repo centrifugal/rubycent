@@ -173,6 +173,28 @@ class AutoBatchTest < Minitest::Test
     assert_equal %w[q0 q1], storages.map { it[:request_id] }.sort
   end
 
+  # A batch request lasts until the latest of its calls' deadlines, and at
+  # least request_timeout from when it is sent: it may outlast a call's.
+  def test_a_batch_request_lasts_until_its_latest_call_deadline
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1), request_timeout: 1)
+    [[[0.3, 5], 5], [[0.3, 0.4], 1]].each_with_index do |(timeouts, want), round|
+      first = Thread.new { client.info }
+      wait_for((round * 2) + 1)
+      queued = timeouts.map { |t| Thread.new { client.info(timeout: t) } }
+      sleep 0.05 # the calls queue
+      @fake.gate << true
+      first.join
+      wait_for((round * 2) + 2)
+      batch = @fake.requests.last
+
+      assert_equal "batch", batch.method_name
+      assert_in_delta want, batch.timeout, 0.15
+      @fake.gate << true
+      queued.each(&:join)
+    end
+    client.close(timeout: 5)
+  end
+
   def test_batch_context_which_does_not_send_fails_the_batch_not_the_batcher
     ctx = ->(_callers) {} # never calls its block
     client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1), batch_context: ctx)

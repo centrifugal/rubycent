@@ -39,8 +39,10 @@ module Cent
   #
   # There is a method per API method, taking the fields of its request as
   # keyword arguments. Each returns its result, raising unless Centrifugo did
-  # everything asked, and takes +timeout:+, in seconds; without one,
-  # request_timeout bounds the call. Under a fiber scheduler - Async, Falcon -
+  # everything asked, and takes +timeout:+, in seconds, which replaces
+  # request_timeout for the call, longer or shorter. Ruby has no deadline a
+  # call runs under for cent to honour: a Timeout.timeout around a call only
+  # cuts it short. Under a fiber scheduler - Async, Falcon -
   # calls wait without blocking other fibers.
   class Client
     include ClientMethods
@@ -71,8 +73,8 @@ module Cent
     #   raises Cent::TimeoutError when the time is up. Without one, the client
     #   keeps up to 256 connections to a host alive, never follows redirects,
     #   and closes idle connections after 50 seconds.
-    # @param request_timeout [Numeric] seconds bounding a call without a timeout
-    #   of its own, 10 by default
+    # @param request_timeout [Numeric] seconds bounding every call, 10 by
+    #   default: a call's +timeout:+ replaces it, longer or shorter
     # @param headers [Hash{String => String}] extra headers for every request,
     #   for a proxy in front of Centrifugo. Not X-API-Key, Authorization or
     #   Content-Type. A User-Agent replaces cent's.

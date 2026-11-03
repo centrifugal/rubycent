@@ -228,6 +228,17 @@ class ClientTest < Minitest::Test
     @client.info(timeout: 2.5)
 
     assert_in_delta 2.5, @fake.requests.last.timeout, 0.1
+    # A call's timeout replaces request_timeout, longer or shorter.
+    client = @fake.client(request_timeout: 1)
+    client.info
+
+    assert_in_delta 1, @fake.requests.last.timeout, 0.1
+    client.info(timeout: 5)
+
+    assert_in_delta 5, @fake.requests.last.timeout, 0.1
+    client.info(timeout: 0.2)
+
+    assert_in_delta 0.2, @fake.requests.last.timeout, 0.1
     assert_raises(Cent::InvalidRequestError) { @client.info(timeout: -1) }
     assert_raises(Cent::TimeoutError) { @client.info(timeout: 0) }
   end
@@ -641,6 +652,21 @@ class ClientTest < Minitest::Test
     end
     assert_raises(Cent::InvalidRequestError) { @client.broadcast_with_retry(channels: [""], data: 1) }
     assert_empty @fake.requests
+  end
+
+  # attempt_timeout is each attempt's own timeout, replacing request_timeout -
+  # longer too - while the call's timeout still ends an attempt sooner.
+  def test_broadcast_with_retry_attempt_timeout_replaces_request_timeout
+    client = @fake.client(request_timeout: 1)
+    client.broadcast_with_retry(channels: ["a"], data: 1, attempt_timeout: 5)
+
+    assert_in_delta 5, @fake.requests.last.timeout, 0.1
+    client.broadcast_with_retry(channels: ["a"], data: 1, attempt_timeout: 5, timeout: 2)
+
+    assert_in_delta 2, @fake.requests.last.timeout, 0.1
+    client.broadcast_with_retry(channels: ["a"], data: 1)
+
+    assert_in_delta 1, @fake.requests.last.timeout, 0.1
   end
 
   def test_broadcast_with_retry_timeout_bounds_the_waits
