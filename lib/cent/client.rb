@@ -456,7 +456,7 @@ module Cent
     def function(name)
       yield
     rescue StandardError => e
-      raise FunctionError, "#{name} raised #{e.class}: #{e.message}"
+      raise FunctionError.new(name, "#{name} raised #{e.class}: #{e.message}")
     end
 
     def send_http(url, headers, body, deadline, left)

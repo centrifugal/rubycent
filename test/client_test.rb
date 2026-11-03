@@ -436,6 +436,7 @@ class ClientTest < Minitest::Test
       client = Cent::Client.new(**opts, http_client: @fake)
       err = assert_raises(Cent::FunctionError) { client.info }
 
+      assert_equal name.name, err.function
       assert_equal "#{name} raised #{exc.class}: #{exc.message}", err.message
       assert_same exc, err.cause
       assert_equal retryable, Cent.retryable?(err), "#{name}: #{exc.class}"

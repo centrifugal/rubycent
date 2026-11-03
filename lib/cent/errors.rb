@@ -204,7 +204,18 @@ module Cent
   # function, and the cause is its exception. {Cent.retryable?} judges it by
   # the cause: a Cent error as itself, a network failure or timeout as
   # retryable, anything else as not.
-  class FunctionError < Error; end
+  class FunctionError < Error
+    # @return [String] the option holding the function: "api_endpoint_func" or
+    #   "bearer_token_func"
+    attr_reader :function
+
+    # @param function [String] the option holding the function
+    # @param message [String]
+    def initialize(function, message = "#{function} failed")
+      @function = function
+      super(message)
+    end
+  end
 
   # A call made after the client was closed.
   class ClosedError < Error; end

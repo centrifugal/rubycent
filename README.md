@@ -289,7 +289,7 @@ them included, and `attempt_timeout:` each one.
 | `Cent::DecodeError` | the reply was not Centrifugo's - usually `api_endpoint` points elsewhere |
 | `Cent::InvalidRequestError` | the client could tell the request is wrong and did not send it |
 | `Cent::InvalidConfigError` | the client is refused as configured: not created, or a call given an endpoint by `api_endpoint_func` or a token by `bearer_token_func` which cannot be sent. The message names the option and the fix |
-| `Cent::FunctionError` | `api_endpoint_func` or `bearer_token_func` raised: the message names the function, `cause` is its exception, and `Cent.retryable?` judges it by that |
+| `Cent::FunctionError` | `api_endpoint_func` or `bearer_token_func` raised: `function` is the option's name, which the message names too, `cause` is its exception, and `Cent.retryable?` judges it by that |
 | `Cent::NetworkError`, `Cent::TimeoutError`, `Cent::ClosedError` | as their names say |
 
 All are `Cent::Error`. Centrifugo adds error codes over time: an unknown code
