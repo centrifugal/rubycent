@@ -45,8 +45,11 @@ passes; if you find yourself about to break one, stop and say so instead.
    `timeout:`, or `request_timeout`, bounds the call - the endpoint and token
    functions, connecting and TLS, the reply read. Before a request, the time
    left becomes Net::HTTP's open, read and write timeouts, and before each
-   chunk of the body, its read timeout again: only headers trickling in can
-   outlast it, which the README says. Connections are made with
+   chunk of the body, its read timeout again. Those bound each read, so
+   `HTTP::Watchdog` finishes a connection whose deadline passed: headers
+   trickling in stop at the deadline too. An error raised once it did is
+   `Cent::TimeoutError`, and a connection is unwatched before it goes back to
+   the pool, so the watchdog never finishes one another call holds. Connections are made with
    `Net::HTTP.new` when needed, so that WebMock and the like see them. Any
    timeout raises `Cent::TimeoutError`.
 5. **A payload is carried exactly.** A payload from a reply sent back unchanged
@@ -104,10 +107,11 @@ creates the GitHub release.
 
 ## Things that look wrong but are deliberate
 
-- **No deadline enforced inside Net::HTTP.** Headers trickling in can outlast
-  a call's timeout: bounding them would mean replacing Net::HTTP's socket
-  through its private hooks, which it does not promise to keep (spec 3.2). A
-  stalled server, the failure that happens, is bounded either way.
+- **A watchdog thread finishes connections at their deadline**, rather than
+  `Timeout.timeout`, which raises anywhere, or replacing Net::HTTP's socket
+  through private hooks: `Net::HTTP#finish` is public, and the read it wakes
+  raises an IOError, under a fiber scheduler too. One thread serves every
+  client.
 - **Net::HTTP, not Faraday.** No dependency whose major version an application
   must match (spec 3.4, Stable), and one deadline per request, which Faraday's
   per-operation timeouts cannot give. `http_client:` takes any other library.

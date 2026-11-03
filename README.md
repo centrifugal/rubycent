@@ -271,13 +271,11 @@ and so may outlast a shorter one, whose call still returns at its timeout:
 client.info(timeout: 0.5)
 ```
 
-The timeout bounds the call: connecting and TLS, sending, each read, and the
-reply's body, read by the time left as it arrives. However a call times out,
-it raises `Cent::TimeoutError`. A call can outlast its timeout in one case
-only: a server - a proxy in trouble, say - sending the reply's headers a few
-bytes at a time, each read within the timeout. `broadcast_with_retry` makes several requests in one
-call: its `timeout:` bounds them all, waits between them included, and
-`attempt_timeout:` each one.
+The timeout bounds the whole call: connecting and TLS, sending, and the
+reply, however slowly a server - a proxy in trouble, say - sends it. However a
+call times out, it raises `Cent::TimeoutError`. `broadcast_with_retry` makes
+several requests in one call: its `timeout:` bounds them all, waits between
+them included, and `attempt_timeout:` each one.
 
 ## Errors
 

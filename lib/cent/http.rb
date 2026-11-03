@@ -8,8 +8,9 @@ module Cent
   # The default HTTP transport: Net::HTTP connections kept alive in a pool, each
   # request bounded by one deadline through Net::HTTP's public API: the time
   # left as its open, read and write timeouts, and again as the read timeout
-  # before each chunk of the body. Only a reply's headers trickling in can
-  # outlast it.
+  # before each chunk of the body. Those bound each read, so a reply's headers
+  # trickling in would outlast them: the Watchdog finishes a connection whose
+  # deadline passed.
   #
   # @api private
   module HTTP
@@ -28,6 +29,96 @@ module Cent
     MAX_DRAIN_BYTES = 64 << 10
 
     def self.now = ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
+
+    # Finishes the connections whose request's deadline passed, which wakes a
+    # read blocked on them with an IOError. One thread for every pool, started
+    # when first needed, and again in a forked process.
+    class Watchdog
+      Entry = Struct.new(:conn, :deadline, :fired)
+
+      def initialize
+        @fork_lock = Mutex.new
+        reset
+      end
+
+      # Returns the block's value, with +conn+ finished if +deadline+ passes
+      # first. An error raised once it was finished - an IOError from the read
+      # it woke, or whatever Net::HTTP raises on a connection finished under
+      # it - is the deadline's.
+      def watch(conn, deadline)
+        reset_after_fork
+        entry = Entry.new(conn, deadline, false)
+        @lock.synchronize do
+          @thread = Thread.new { run } unless @thread&.alive?
+          @entries << entry
+          @wake.signal
+        end
+        begin
+          yield
+        rescue StandardError
+          raise Net::ReadTimeout, "the call's deadline passed" if fired?(entry)
+
+          raise
+        ensure
+          # Under the lock: once removed, the connection is never finished
+          # again, so that it goes back to the pool safely.
+          @lock.synchronize { @entries.delete(entry) }
+        end
+      end
+
+      private
+
+      # A forked process starts with fresh state: the parent's thread did not
+      # survive the fork, its entries are the parent's connections, and its
+      # lock may have been held by a thread which no longer exists - taking it
+      # would block forever.
+      def reset_after_fork
+        return if @pid == ::Process.pid
+
+        @fork_lock.synchronize do
+          reset unless @pid == ::Process.pid
+        end
+      end
+
+      def reset
+        @lock = Mutex.new
+        @wake = ConditionVariable.new
+        @entries = []
+        @thread = nil
+        @pid = ::Process.pid
+      end
+
+      def fired?(entry) = @lock.synchronize { entry.fired }
+
+      def run
+        Thread.current.name = "rubycent-watchdog"
+        @lock.synchronize do
+          loop do
+            now = HTTP.now
+            next_deadline = nil
+            @entries.each do |e|
+              next if e.fired
+
+              if e.deadline <= now
+                e.fired = true
+                finish(e.conn)
+              elsif next_deadline.nil? || e.deadline < next_deadline
+                next_deadline = e.deadline
+              end
+            end
+            @wake.wait(@lock, next_deadline && (next_deadline - now))
+          end
+        end
+      end
+
+      def finish(conn)
+        conn.finish
+      rescue IOError, SystemCallError, OpenSSL::SSL::SSLError
+        nil
+      end
+    end
+
+    WATCHDOG = Watchdog.new
 
     # Connections kept alive per scheme, host and port. Safe for concurrent use.
     class Pool
@@ -51,21 +142,8 @@ module Cent
         conn = checkout(key, uri)
         reusable = false
         begin
-          left = time_left(deadline)
-          conn.open_timeout = left
-          conn.read_timeout = left
-          conn.write_timeout = left
-          conn.start unless conn.started?
-          req = Net::HTTP::Post.new(uri.request_uri, headers)
-          req.body = body
-          out = nil
-          catch(:drop) do
-            conn.request(req) do |res|
-              out = [res.code.to_i, res.to_hash.transform_values { it.join(", ") }, +""]
-              read(conn, res, out[2], deadline)
-            end
-            reusable = conn.started?
-          end
+          out, reusable = WATCHDOG.watch(conn, deadline) { exchange(conn, uri, headers, body, deadline) }
+          reusable &&= conn.started?
           out
         ensure
           reusable ? checkin(key, conn) : discard(conn)
@@ -83,6 +161,28 @@ module Cent
       end
 
       private
+
+      # Sends the request on +conn+, and returns [[status, headers, body],
+      # whether the connection may be reused].
+      def exchange(conn, uri, headers, body, deadline)
+        left = time_left(deadline)
+        conn.open_timeout = left
+        conn.read_timeout = left
+        conn.write_timeout = left
+        conn.start unless conn.started?
+        req = Net::HTTP::Post.new(uri.request_uri, headers)
+        req.body = body
+        out = nil
+        reusable = false
+        catch(:drop) do
+          conn.request(req) do |res|
+            out = [res.code.to_i, res.to_hash.transform_values { it.join(", ") }, +""]
+            read(conn, res, out[2], deadline)
+          end
+          reusable = true
+        end
+        [out, reusable]
+      end
 
       # Reads the body into +body+: whole for a 200, up to MAX_API_ERROR_BYTES
       # otherwise, the rest drained so that the connection is reused - or

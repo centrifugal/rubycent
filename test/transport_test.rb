@@ -78,6 +78,87 @@ class TransportTest < Minitest::Test
     assert Cent.retryable?(err)
   end
 
+  def test_deadline_bounds_trickling_headers
+    serve do |_line, _headers, _body, sock|
+      # A header line at a time: each read is quick, the whole is not.
+      sock.write("HTTP/1.1 200 OK\r\n")
+      40.times do |i|
+        sock.write("X-Slow-#{i}: 1\r\n")
+        sleep 0.05
+      end
+      ok(sock)
+    rescue IOError, SystemCallError
+      nil # the client hung up
+    end
+    start = Cent::HTTP.now
+    err = assert_raises(Cent::TimeoutError) { @client.info(timeout: 0.3) }
+    assert_operator Cent::HTTP.now - start, :<, 0.6
+    assert Cent.retryable?(err)
+    # Under a fiber scheduler too.
+    start = Cent::HTTP.now
+
+    Sync { assert_raises(Cent::TimeoutError) { @client.info(timeout: 0.3) } }
+    assert_operator Cent::HTTP.now - start, :<, 0.6
+  end
+
+  # A deadline passing as the reply completes leaves the call's outcome, never
+  # a connection finished under the next call.
+  def test_deadline_racing_the_reply
+    serve do |_line, _headers, _body, sock|
+      sleep 0.02
+      ok(sock)
+    end
+    outcomes = Array.new(200) do
+      @client.info(timeout: 0.015 + (rand * 0.01))
+      :ok
+    rescue Cent::TimeoutError
+      :timeout
+    end
+
+    assert_equal %i[ok timeout], outcomes.uniq.sort, "both outcomes happened"
+    5.times { @client.info } # the pool's connections still work
+  end
+
+  # A process forked while the watchdog's lock was held - by a thread which
+  # does not survive the fork - still bounds its calls: it starts with a
+  # watchdog of its own instead of waiting forever for that lock.
+  def test_watchdog_after_fork_with_its_lock_held
+    skip "no fork" unless Process.respond_to?(:fork)
+    serve do |_line, _headers, _body, sock|
+      sock.write("HTTP/1.1 200 OK\r\n")
+      40.times do |i|
+        sock.write("X-Slow-#{i}: 1\r\n")
+        sleep 0.05
+      end
+      ok(sock)
+    rescue IOError, SystemCallError
+      nil
+    end
+    lock = Cent::HTTP::WATCHDOG.instance_variable_get(:@lock)
+    held = Queue.new
+    release = Queue.new
+    holder = Thread.new do
+      lock.synchronize do
+        held << true
+        release.pop
+      end
+    end
+    held.pop
+    pid = fork do
+      @client.info(timeout: 0.3)
+      exit!(1)
+    rescue Cent::TimeoutError
+      exit!(0)
+    rescue StandardError
+      exit!(2)
+    end
+    release << true
+    holder.join
+    _, status = Timeout.timeout(5) { Process.wait2(pid) }
+
+    assert_equal 0, status.exitstatus, "the child timed out its call (0), not 1: succeeded, 2: other error"
+  end
+
   def test_deadline_bounds_a_silent_server
     serve { |*| sleep 5 }
     start = Cent::HTTP.now
