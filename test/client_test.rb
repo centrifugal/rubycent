@@ -239,8 +239,21 @@ class ClientTest < Minitest::Test
     client.info(timeout: 0.2)
 
     assert_in_delta 0.2, @fake.requests.last.timeout, 0.1
-    assert_raises(Cent::InvalidRequestError) { @client.info(timeout: -1) }
-    assert_raises(Cent::TimeoutError) { @client.info(timeout: 0) }
+    assert_in_delta Cent::Client::DEFAULT_REQUEST_TIMEOUT,
+                    Cent::Client.new(api_endpoint: "http://a/api", request_timeout: nil).request_timeout
+    # Zero is refused as a negative is, before sending: nil is the default.
+    sent = @fake.requests.size
+    [-1, 0, 0.0, "1"].each do |t|
+      err = assert_raises(Cent::InvalidRequestError) { @client.info(timeout: t) }
+      assert_match(/timeout must be a positive number/, err.message)
+      refute Cent.retryable?(err)
+      assert_raises(Cent::InvalidRequestError) { @client.broadcast_with_retry(channels: ["a"], data: 1, timeout: t) }
+      assert_raises(Cent::InvalidRequestError) { @client.history_all(channel: "c", limit: 1, timeout: t) }
+      b = @client.new_batch
+      b.info
+      assert_raises(Cent::InvalidRequestError) { b.send(timeout: t) }
+    end
+    assert_equal sent, @fake.requests.size
   end
 
   # Validation and payloads.
@@ -349,6 +362,8 @@ class ClientTest < Minitest::Test
       [{ api_endpoint: "http://a/api", headers: { "X" => "a\r\nb" } }, "printable ASCII"],
       [{ api_endpoint: "http://a/api", headers: { "Host" => "" } }, "Host must not be empty"],
       [{ api_endpoint: "http://a/api", request_timeout: 0 }, "request_timeout must be a positive"],
+      [{ api_endpoint: "http://a/api", request_timeout: -1 }, "request_timeout must be a positive"],
+      [{ api_endpoint: "http://a/api", request_timeout: Float::INFINITY }, "request_timeout must be a positive"],
       [{ api_endpoint: "http://a/api", http_options: { read_timeout: 1 } }, "read_timeout is cent's to set"],
       [{ api_endpoint: "http://a/api", http_options: { nope: 1 } }, "nope is not a Net::HTTP setting"],
       [{ api_endpoint: "http://a/api", http_client: 1 }, "http_client must respond to call"],
@@ -676,7 +691,8 @@ class ClientTest < Minitest::Test
   end
 
   def test_broadcast_with_retry_options
-    [{ max_attempts: 0 }, { max_attempts: -1 }, { attempt_timeout: 0 }, { attempt_timeout: -1.0 }].each do |opts|
+    [{ max_attempts: 0 }, { max_attempts: -1 }, { attempt_timeout: 0 }, { attempt_timeout: 0.0 },
+     { attempt_timeout: -1.0 }].each do |opts|
       assert_raises(Cent::InvalidRequestError) { @client.broadcast_with_retry(channels: ["a"], data: 1, **opts) }
     end
     assert_raises(Cent::InvalidRequestError) { @client.broadcast_with_retry(channels: [""], data: 1) }

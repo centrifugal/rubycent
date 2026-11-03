@@ -405,7 +405,7 @@ PAGES_DOC = <<~DOC.lines(chomp: true)
 DOC
 
 TIMEOUT_DOC = "@param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or " \
-              "shorter: request_timeout when nil."
+              "shorter: request_timeout when nil. Zero is refused, as a negative is."
 
 BROADCAST_DOC = <<~DOC.lines(chomp: true)
   Channels succeed or fail on their own. It returns when every channel got the

@@ -684,7 +684,7 @@ module Cent
     #   ignored. Only works in channels with history enabled.
     # @param version_epoch [String, nil] The epoch of version. When it changes, Centrifugo
     #   accepts the publication even if its version is lower than before.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [PublishResult]
     # @raise [Error]
     def publish(
@@ -755,7 +755,7 @@ module Cent
     #   ignored. Only works in channels with history enabled.
     # @param version_epoch [String, nil] The epoch of version. When it changes, Centrifugo
     #   accepts the publication even if its version is lower than before.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [BroadcastResult]
     # @raise [Error]
     def broadcast(
@@ -902,7 +902,7 @@ module Cent
     # @param all_users [Boolean, nil] When user is empty, targets every connection on every node
     #   instead of the anonymous-only bucket. No effect when user is non-empty.
     #   Without label_filter it acts on every connection. Centrifugo PRO only.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [SubscribeResult]
     # @raise [Error]
     def subscribe(
@@ -952,7 +952,7 @@ module Cent
     # @param label_filter [FilterNode, Hash, nil] Restricts the call to clients whose labels match this
     #   filter. Centrifugo PRO only.
     # @param all_users [Boolean, nil] Works as SubscribeRequest.all_users. Centrifugo PRO only.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UnsubscribeResult]
     # @raise [Error]
     def unsubscribe(
@@ -990,7 +990,7 @@ module Cent
     # @param label_filter [FilterNode, Hash, nil] Restricts the call to clients whose labels match this
     #   filter. Centrifugo PRO only.
     # @param all_users [Boolean, nil] Works as SubscribeRequest.all_users. Centrifugo PRO only.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DisconnectResult]
     # @raise [Error]
     def disconnect(
@@ -1020,7 +1020,7 @@ module Cent
     # currently subscribed to it. Presence must be enabled for the channel.
     #
     # @param channel [String, nil] The name of the channel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [PresenceResult]
     # @raise [Error]
     def presence(channel:, timeout: nil)
@@ -1034,7 +1034,7 @@ module Cent
     # channel.
     #
     # @param channel [String, nil] The name of the channel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [PresenceStatsResult]
     # @raise [Error]
     def presence_stats(channel:, timeout: nil)
@@ -1052,7 +1052,7 @@ module Cent
     #   returned, without publications.
     # @param since [StreamPosition, Hash, nil] Returns publications after this stream position.
     # @param reverse [Boolean, nil] Iterates in reverse order, from latest to earliest.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [HistoryResult]
     # @raise [Error]
     def history(
@@ -1110,7 +1110,7 @@ module Cent
     # disconnected because of insufficient state.
     #
     # @param channel [String, nil] The name of the channel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [HistoryRemoveResult]
     # @raise [Error]
     def history_remove(channel:, timeout: nil)
@@ -1121,7 +1121,7 @@ module Cent
 
     # Returns information about the running Centrifugo nodes.
     #
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [InfoResult]
     # @raise [Error]
     def info(timeout: nil)
@@ -1147,7 +1147,7 @@ module Cent
     # @param label_filter [FilterNode, Hash, nil] Restricts the call to clients whose labels match this
     #   filter. Centrifugo PRO only.
     # @param all_users [Boolean, nil] Works as SubscribeRequest.all_users. Centrifugo PRO only.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [RefreshResult]
     # @raise [Error]
     def refresh(
@@ -1179,7 +1179,7 @@ module Cent
     # It can be heavy on large deployments: there is no pagination.
     #
     # @param pattern [String, nil] Filters channels by name, using gobwas/glob syntax.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [ChannelsResult]
     # @raise [Error]
     def channels(pattern: nil, timeout: nil)
@@ -1196,7 +1196,7 @@ module Cent
     # @param expression [String, nil] A CEL expression to filter connections.
     # @param label_filter [FilterNode, Hash, nil] Restricts the listing to clients whose labels match this
     #   filter. Centrifugo PRO only.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [ConnectionsResult]
     # @raise [Error]
     def connections(
@@ -1216,7 +1216,7 @@ module Cent
     # @param users [Array<String>] The list of user IDs to update the status for. Required.
     # @param state [String, nil] An optional custom state to store in the user status. It can
     #   be restricted by the user_status.state_regex option.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UpdateUserStatusResult]
     # @raise [Error]
     def update_user_status(users:, state: nil, timeout: nil)
@@ -1228,7 +1228,7 @@ module Cent
     # Returns the status of users. Centrifugo PRO only.
     #
     # @param users [Array<String>] The list of user IDs to get the status for. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [GetUserStatusResult]
     # @raise [Error]
     def get_user_status(users:, timeout: nil)
@@ -1240,7 +1240,7 @@ module Cent
     # Deletes the status of users. Centrifugo PRO only.
     #
     # @param users [Array<String>] The list of user IDs to delete the status for. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeleteUserStatusResult]
     # @raise [Error]
     def delete_user_status(users:, timeout: nil)
@@ -1256,7 +1256,7 @@ module Cent
     #   but a reasonably small value is recommended to keep the set of blocked
     #   users small.
     # @param user [String, nil] The ID of the user to block. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [BlockUserResult]
     # @raise [Error]
     def block_user(user:, expire_at: nil, timeout: nil)
@@ -1268,7 +1268,7 @@ module Cent
     # Unblocks a user. Centrifugo PRO only.
     #
     # @param user [String, nil] The ID of the user to unblock. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UnblockUserResult]
     # @raise [Error]
     def unblock_user(user:, timeout: nil)
@@ -1284,7 +1284,7 @@ module Cent
     # @param expire_at [Integer, nil] The Unix time in seconds when the revocation expires.
     #   Optional, but a value matching the token expiration is recommended.
     # @param uid [String, nil] The unique ID of the token to revoke (jti claim). Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [RevokeTokenResult]
     # @raise [Error]
     def revoke_token(uid:, expire_at: nil, timeout: nil)
@@ -1304,7 +1304,7 @@ module Cent
     #   considered revoked. If not set, the current time is used.
     # @param channel [String, nil] Limits the invalidation to subscription tokens for this
     #   channel.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [InvalidateUserTokensResult]
     # @raise [Error]
     def invalidate_user_tokens(
@@ -1338,7 +1338,7 @@ module Cent
     #   Europe/Nicosia.
     # @param locale [String, nil] The locale of the device user as an IETF BCP 47 language
     #   tag, for example en-US.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceRegisterResult]
     # @raise [Error]
     def device_register(
@@ -1380,7 +1380,7 @@ module Cent
     # @param topics_update [DeviceTopicsUpdate, Hash, nil] Updates the device topics.
     # @param timezone_update [DeviceTimezoneUpdate, Hash, nil] Updates the device timezone.
     # @param locale_update [DeviceLocaleUpdate, Hash, nil] Updates the device locale.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceUpdateResult]
     # @raise [Error]
     def device_update(
@@ -1411,7 +1411,7 @@ module Cent
     #
     # @param ids [Array<String>] Selects devices to remove by ID.
     # @param users [Array<String>] Selects devices to remove by user.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceRemoveResult]
     # @raise [Error]
     def device_remove(ids: nil, users: nil, timeout: nil)
@@ -1433,7 +1433,7 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of devices to return.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceListResult]
     # @raise [Error]
     def device_list(
@@ -1518,7 +1518,7 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of items to return.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceTopicListResult]
     # @raise [Error]
     def device_topic_list(
@@ -1591,7 +1591,7 @@ module Cent
     # @param user [String, nil] An optional ownership guard: the update is applied only if the
     #   device currently belongs to this user. Otherwise the call fails with a
     #   conflict error (or not found if there is no such device).
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [DeviceTopicUpdateResult]
     # @raise [Error]
     def device_topic_update(
@@ -1615,7 +1615,7 @@ module Cent
     # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
     #   empty for the first page.
     # @param limit [Integer, nil] The maximum number of items to return.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UserTopicListResult]
     # @raise [Error]
     def user_topic_list(
@@ -1670,7 +1670,7 @@ module Cent
     #   device - anonymous ones included - gets on its next device_register.
     # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UserTopicUpdateResult]
     # @raise [Error]
     def user_topic_update(
@@ -1710,7 +1710,7 @@ module Cent
     #   with a filter recipient.
     # @param use_meta [Boolean, nil] Additionally loads device meta while sending, making it
     #   available in templating.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [SendPushNotificationResult]
     # @raise [Error]
     def send_push_notification(
@@ -1751,7 +1751,7 @@ module Cent
     #   delivered, interacted.
     # @param device_id [String, nil] The Centrifugo device ID. Required.
     # @param msg_id [String, nil] The message ID issued by the provider.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [UpdatePushStatusResult]
     # @raise [Error]
     def update_push_status(
@@ -1770,7 +1770,7 @@ module Cent
     # send_at). Centrifugo PRO only.
     #
     # @param uid [String, nil] The uid of the push notification to cancel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [CancelPushResult]
     # @raise [Error]
     def cancel_push(uid:, timeout: nil)
@@ -1805,7 +1805,7 @@ module Cent
     # @param key_mode [String, nil] Makes the publish conditional: if_new writes only if the key
     #   does not exist, if_exists only if it exists. Empty always writes.
     #   One of: if_new, if_exists.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapPublishResult]
     # @raise [Error]
     def map_publish(
@@ -1851,7 +1851,7 @@ module Cent
     #   MapPublishRequest: a removal with a key already used in the channel is
     #   not applied again, and its result is suppressed with suppress_reason
     #   "idempotency". Keys are kept for 5 minutes by default.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapRemoveResult]
     # @raise [Error]
     def map_remove(
@@ -1883,7 +1883,7 @@ module Cent
     # @param revision_epoch [String, nil] The epoch of the position from a previous state
     #   read. If the epoch changed, the call fails with an unrecoverable
     #   position error.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapReadStateResult]
     # @raise [Error]
     def map_read_state(
@@ -1977,7 +1977,7 @@ module Cent
     # @param limit [Integer, nil] The maximum number of entries: -1 means no limit, 0 returns
     #   only the stream position.
     # @param reverse [Boolean, nil] Returns entries newest first.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapReadStreamResult]
     # @raise [Error]
     def map_read_stream(
@@ -2002,7 +2002,7 @@ module Cent
     # Returns statistics about a map channel.
     #
     # @param channel [String, nil] The name of the map channel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapStatsResult]
     # @raise [Error]
     def map_stats(channel:, timeout: nil)
@@ -2014,7 +2014,7 @@ module Cent
     # Removes all state and stream data of a map channel.
     #
     # @param channel [String, nil] The name of the map channel. Required.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [MapClearResult]
     # @raise [Error]
     def map_clear(channel:, timeout: nil)
@@ -2035,7 +2035,7 @@ module Cent
     #   higher than the current one within the same epoch is silently dropped.
     # @param epoch [String, nil] The channel-level publisher epoch. A change resets per-key
     #   versions and unsubscribes current subscribers with insufficient state.
-    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil.
+    # @param timeout [Numeric, nil] Seconds bounding the call, replacing request_timeout, longer or shorter: request_timeout when nil. Zero is refused, as a negative is.
     # @return [SharedPollPublishResult]
     # @raise [Error]
     def shared_poll_publish(

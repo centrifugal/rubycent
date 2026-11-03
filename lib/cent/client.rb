@@ -77,8 +77,10 @@ module Cent
     #   raises Cent::TimeoutError when the time is up. Without one, the client
     #   keeps up to 256 connections to a host alive, never follows redirects,
     #   and closes idle connections after 50 seconds.
-    # @param request_timeout [Numeric] seconds bounding every call, 10 by
-    #   default: a call's +timeout:+ replaces it, longer or shorter
+    # @param request_timeout [Numeric, nil] seconds bounding every call, 10
+    #   when nil: a call's +timeout:+ replaces it, longer or shorter. It cannot
+    #   be turned off: zero is refused, as a negative is; for long calls, set a
+    #   large value.
     # @param headers [Hash{String => String}] extra headers for every request,
     #   for a proxy in front of Centrifugo. Not X-API-Key, Authorization or
     #   Content-Type. A User-Agent replaces cent's.
@@ -116,8 +118,11 @@ module Cent
       @token_func = callable(bearer_token_func, "bearer_token_func")
       @headers = check_headers(headers, api_key)
 
+      # nil is unset: the default. Zero is refused, as a negative is - a call
+      # is never unbounded.
+      request_timeout = DEFAULT_REQUEST_TIMEOUT if request_timeout.nil?
       unless request_timeout.is_a?(Numeric) && request_timeout.positive? && request_timeout.finite?
-        raise InvalidConfigError, "request_timeout must be a positive number of seconds"
+        raise InvalidConfigError, "request_timeout must be a positive number of seconds; nil for the default"
       end
 
       @request_timeout = request_timeout.to_f
@@ -347,8 +352,9 @@ module Cent
 
     def deadline(timeout)
       return HTTP.now + @request_timeout if timeout.nil?
-      unless timeout.is_a?(Numeric) && !timeout.negative?
-        raise InvalidRequestError, "timeout must be a non-negative number of seconds"
+      # Zero is refused as a negative is: nil is the way to say "the default".
+      unless timeout.is_a?(Numeric) && timeout.positive?
+        raise InvalidRequestError, "timeout must be a positive number of seconds; nil for request_timeout"
       end
 
       HTTP.now + timeout

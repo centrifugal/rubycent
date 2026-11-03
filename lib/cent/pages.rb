@@ -100,6 +100,7 @@ module Cent
     # the block builds: an Enumerator, or each yielded to +block+. The request
     # is checked here, before anything is sent.
     def pages(method, timeout, block, &)
+      deadline(timeout) # timeout: checked at the call, as the request is
       first = encode_request(method, &)
       check_history(first) if method == "history"
       return Enumerator.new { |y| each_page(method, first, timeout) { y << it } } unless block
