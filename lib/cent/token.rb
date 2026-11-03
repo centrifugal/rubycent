@@ -255,10 +255,13 @@ module Cent
     # @param labels [Hash{String => String}] the connection's client labels:
     #   for metrics, targeted server API calls and CEL expressions. Centrifugo
     #   PRO only.
+    # @param profile [String, nil] the dictionary compression profile of the
+    #   connection, overriding the one its client declared. Centrifugo PRO only.
     # @return [String]
     # @raise [Error, InvalidRequestError]
     def connection(key, expires_at:, user: "", connection_expires_at: nil, issued_at: nil, id: nil, audience: nil,
-                   issuer: nil, info: nil, b64info: nil, channels: [], subs: {}, meta: nil, caps: [], labels: {})
+                   issuer: nil, info: nil, b64info: nil, channels: [], subs: {}, meta: nil, caps: [], labels: {},
+                   profile: nil)
       exp = expiry(expires_at, "expires_at")
       unless channels.nil? || channels.empty? || subs.nil? || subs.empty?
         raise Error, "set channels or subs, not both: Centrifugo ignores channels when subs is set"
@@ -275,6 +278,7 @@ module Cent
         Wire.put(w, "meta", meta, "", :json)
         Wire.put(w, "caps", caps, "", ChannelsCapability, :list)
         Wire.put(w, "labels", labels, "", :str, :map)
+        Wire.put(w, "profile", profile, "", :str)
       end
       sign(key, w)
     end

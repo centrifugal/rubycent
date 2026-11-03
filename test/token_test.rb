@@ -55,11 +55,12 @@ class TokenTest < Minitest::Test
                                              issuer: "i", connection_expires_at: :never, info: { "n" => 1 },
                                              b64info: "AA==", subs: { "news" => { data: { x: 1 } } },
                                              meta: { plan: "pro" }, caps: [{ channels: ["c"], allow: ["sub"] }],
-                                             labels: { "l" => "v" })
+                                             labels: { "l" => "v" }, profile: "chat")
     header, c = claims(t)
 
     assert_equal({ "alg" => "HS256", "typ" => "JWT", "kid" => "k1" }, header)
-    assert_equal %w[sub exp iat jti aud iss expire_at info b64info subs meta caps labels], c.keys
+    assert_equal %w[sub exp iat jti aud iss expire_at info b64info subs meta caps labels profile], c.keys
+    assert_equal "chat", c["profile"]
     assert_equal 0, c["expire_at"]
     assert_equal({ "news" => { "data" => { "x" => 1 } } }, c["subs"])
     assert_equal [{ "channels" => ["c"], "allow" => ["sub"] }], c["caps"]
