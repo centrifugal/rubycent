@@ -616,11 +616,15 @@ KEY = Cent::Token::Key.hmac(ENV.fetch("CENTRIFUGO_TOKEN_SECRET"))   # client.tok
 
 CONNECTION_TOKEN = Cent::Endpoints::ConnectionToken.new(on_error: REPORT) do |req|
   user = session_user(req.raw)
-  raise Cent::Endpoints::Unauthorized unless user   # 403: the client stops asking
+  raise Cent::Endpoints::ForbiddenError unless user   # 403: the client stops asking
 
   Cent::Token.connection(KEY, user: user.id.to_s, expires_at: Time.now + 3600)
 end
 ```
+
+`Cent::Endpoints::ForbiddenError` answers 403, which client SDKs report as
+their `UnauthorizedError`, and stop asking; it is not the API client's
+`Cent::UnauthorizedError`, which means Centrifugo refused your API key.
 
 An expiry is required: a `Time`, or `:never` for a token accepted forever.
 `Cent::Endpoints::SubscriptionToken` serves subscription tokens the same way,

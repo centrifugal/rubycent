@@ -8,13 +8,13 @@ module Cent
   #
   #   conn = Cent::Endpoints::ConnectionToken.new(on_error: ->(_http, err) { logger.error(err) }) do |req|
   #     user = session_user(req.raw)                     # the Rack env
-  #     raise Cent::Endpoints::Unauthorized unless user
+  #     raise Cent::Endpoints::ForbiddenError unless user
   #
   #     Cent::Token.connection(key, user:, expires_at: Time.now + 15 * 60)
   #   end
   #   mount conn, at: "/centrifugo/connection_token"   # config/routes.rb
   #
-  # An endpoint answers a JSON object, never cached; Unauthorized - also as the
+  # An endpoint answers a JSON object, never cached; ForbiddenError - also as the
   # cause of another error - with 403, on which client SDKs stop asking, and
   # disconnect or unsubscribe; any other error with 500, which they retry. A
   # malformed request gets 400, a wrong method 405. +on_error+, when set, is
@@ -25,12 +25,14 @@ module Cent
     MAX_BODY = 1 << 20
 
     # Raised by the block of an endpoint when the user may not have a token or
-    # signature: answered with 403, on which client SDKs stop asking. It is the
-    # endpoints' own, named after client SDKs' UnauthorizedError - not the API
-    # client's {Cent::UnauthorizedError}, which means Centrifugo refused the
-    # SDK's credentials.
-    class Unauthorized < StandardError
-      def initialize(msg = "unauthorized") = super
+    # signature: answered with 403, on which client SDKs stop asking, and
+    # disconnect or unsubscribe. Client SDKs report it as their
+    # UnauthorizedError. It is not the API client's {Cent::UnauthorizedError},
+    # which means Centrifugo refused this server's credentials: the two are
+    # named apart so that rescuing one where the other is meant cannot pass
+    # silently.
+    class ForbiddenError < StandardError
+      def initialize(msg = "forbidden") = super
     end
 
     # @api private
@@ -44,7 +46,7 @@ module Cent
 
       def answer(req, body, error)
         if error
-          return HTTPResponse.text(403, "Forbidden") if find(error, Unauthorized)
+          return HTTPResponse.text(403, "Forbidden") if find(error, ForbiddenError)
 
           return failure(req, 500, error)
         end
@@ -61,7 +63,7 @@ module Cent
 
     # The endpoint a client's getToken callback calls. Its block, given the
     # {HTTPRequest}, returns the connection token of the request's user - from
-    # {Token.connection}, say - or raises Unauthorized. It takes GET and POST,
+    # {Token.connection}, say - or raises ForbiddenError. It takes GET and POST,
     # the body ignored.
     class ConnectionToken < Endpoint
       private
@@ -78,13 +80,13 @@ module Cent
     # The endpoint a subscription's getToken callback calls. Its block, given
     # the channel and the {HTTPRequest}, returns the token of the request's
     # user for the channel - from {Token.subscription}, say - or raises
-    # Unauthorized when the user may not subscribe. The channel comes from a
+    # ForbiddenError when the user may not subscribe. The channel comes from a
     # POST's JSON body, +{"channel": ...}+, or from a GET's channel query
     # parameter; it is required.
     #
     #   Cent::Endpoints::SubscriptionToken.new do |channel, req|
     #     user = session_user(req.raw)
-    #     raise Cent::Endpoints::Unauthorized unless user && may_read?(user, channel)
+    #     raise Cent::Endpoints::ForbiddenError unless user && may_read?(user, channel)
     #
     #     Cent::Token.subscription(key, user:, channel:, expires_at: Time.now + 15 * 60)
     #   end
@@ -122,7 +124,7 @@ module Cent
     # {SharedPoll.sign}, say - and returns them, in the order signed, with the
     # signature: +[allowed, signature]+. The keys it leaves out are revoked:
     # the client stops tracking them. To end the subscription instead, it
-    # raises Unauthorized. It may return only keys it was asked for: a
+    # raises ForbiddenError. It may return only keys it was asked for: a
     # signature covering another would be refused, and such a key fails the
     # request with 500.
     class SharedPollSignature < Endpoint

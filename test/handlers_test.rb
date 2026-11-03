@@ -39,18 +39,21 @@ class HandlersTest < Minitest::Test
     assert_equal([405, "GET, POST"], h.handle("PUT").to_a.then { [it[0], it[1]["allow"]] })
   end
 
-  def test_unauthorized_is_403_and_not_an_error
-    h = E::ConnectionToken.new(on_error: @on_error) { raise E::Unauthorized }
+  def test_forbidden_is_403_and_not_an_error
+    h = E::ConnectionToken.new(on_error: @on_error) { raise E::ForbiddenError }
 
     assert_equal 403, h.handle("GET").status
     wrapped = E::ConnectionToken.new(on_error: @on_error) do
-      raise E::Unauthorized
-    rescue E::Unauthorized
+      raise E::ForbiddenError
+    rescue E::ForbiddenError
       raise "wrapped"
     end
 
     assert_equal 403, wrapped.handle("GET").status
     assert_empty @errors
+    # Not the API client's error for refused credentials.
+    refute_operator E::ForbiddenError, :<=, Cent::UnauthorizedError
+    refute E.const_defined?(:Unauthorized, false)
   end
 
   def test_other_errors_are_500_and_reported
