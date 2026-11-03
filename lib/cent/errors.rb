@@ -194,9 +194,17 @@ module Cent
   # Centrifugo checks itself, and reports as a {BadRequestError}.
   class InvalidRequestError < Error; end
 
-  # A client configuration with a mistake: the message names the option and the
-  # fix.
+  # A client refused as configured: not created, or - on a call, before
+  # sending - given an endpoint by api_endpoint_func which fails api_endpoint's
+  # rules, or a token by bearer_token_func which is empty or not printable
+  # ASCII. The message names the option and the fix.
   class InvalidConfigError < Error; end
+
+  # api_endpoint_func or bearer_token_func raised: the message names the
+  # function, and the cause is its exception. {Cent.retryable?} judges it by
+  # the cause: a Cent error as itself, a network failure or timeout as
+  # retryable, anything else as not.
+  class FunctionError < Error; end
 
   # A call made after the client was closed.
   class ClosedError < Error; end
@@ -328,6 +336,9 @@ module Cent
   # timeout, also a caller's own; an HTTPError 429 or 5xx; a broadcast or batch
   # partial error with at least one retryable part.
   #
+  # A FunctionError is judged by its cause, the configured function's own
+  # exception.
+  #
   # Not retryable are the request's own errors - an unknown channel, a bad
   # request, InvalidRequestError - and InvalidConfigError, ClosedError, a
   # DecodeError, rejected credentials and an invalid TLS certificate.
@@ -346,9 +357,16 @@ module Cent
     when HTTPError then err.status_code == 429 || err.status_code >= 500
     when TimeoutError then true
     when NetworkError then !certificate_error?(err)
+    when FunctionError
+      cause = err.cause
+      cause.is_a?(Error) ? retryable?(cause) : NETWORK_CAUSES.any? { cause.is_a?(it) }
     else false
     end
   end
+
+  # The exceptions of a configured function which a retry may get past.
+  NETWORK_CAUSES = [SocketError, SystemCallError, IOError, ::Timeout::Error, IO::TimeoutError].freeze
+  private_constant :NETWORK_CAUSES
 
   def self.certificate_error?(err)
     cause = err.cause

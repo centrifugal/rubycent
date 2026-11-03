@@ -391,11 +391,40 @@ class ClientTest < Minitest::Test
   def test_bad_token_or_endpoint_fails_before_sending
     ["", nil, "t\n", "тест"].each do |t|
       client = Cent::Client.new(api_endpoint: Fake::ENDPOINT, bearer_token_func: -> { t }, http_client: @fake)
-      assert_raises(Cent::InvalidConfigError) { client.info }
+      err = assert_raises(Cent::InvalidConfigError) { client.info }
+      assert_match(/\Abearer_token_func returned/, err.message)
+      refute Cent.retryable?(err)
     end
-    client = Cent::Client.new(api_endpoint_func: -> { "http://a/api/info" }, http_client: @fake)
+    ["http://a/api/info", "ftp://a/api", "http://a/api?x=1", 42].each do |addr|
+      client = Cent::Client.new(api_endpoint_func: -> { addr }, http_client: @fake)
+      err = assert_raises(Cent::InvalidConfigError) { client.info }
 
-    assert_match(/api_endpoint_func/, assert_raises(Cent::InvalidConfigError) { client.info }.message)
+      assert_match(/\Aapi_endpoint_func/, err.message)
+      refute Cent.retryable?(err)
+    end
+    assert_empty @fake.requests
+  end
+
+  # A configured function's own exception fails the call as a FunctionError
+  # naming the function, the exception its cause, judged by Cent.retryable?
+  # as the cause is.
+  def test_a_functions_own_exception_is_the_cause
+    [
+      [:api_endpoint_func, IOError.new("discovery down"), true],
+      [:api_endpoint_func, ArgumentError.new("no such service"), false],
+      [:bearer_token_func, Errno::ECONNREFUSED.new("token service"), true],
+      [:bearer_token_func, Cent::TimeoutError.new("token service timed out"), true],
+      [:bearer_token_func, Cent::InvalidConfigError.new("no key"), false],
+      [:bearer_token_func, RuntimeError.new("boom"), false]
+    ].each do |name, exc, retryable|
+      opts = name == :api_endpoint_func ? { api_endpoint_func: -> { raise exc } } : { api_endpoint: Fake::ENDPOINT, bearer_token_func: -> { raise exc } }
+      client = Cent::Client.new(**opts, http_client: @fake)
+      err = assert_raises(Cent::FunctionError) { client.info }
+
+      assert_equal "#{name} raised #{exc.class}: #{exc.message}", err.message
+      assert_same exc, err.cause
+      assert_equal retryable, Cent.retryable?(err), "#{name}: #{exc.class}"
+    end
     assert_empty @fake.requests
   end
 
@@ -420,8 +449,8 @@ class ClientTest < Minitest::Test
     infos = []
     client = Cent::Client.new(api_endpoint_func: -> { raise IOError, "discovery" }, http_client: @fake,
                               on_request: ->(i) { infos << i })
-    assert_raises(Cent::NetworkError) { client.info }
-    assert_equal([["info", 0, Cent::NetworkError]], infos.map { [it.method, it.status_code, it.error.class] })
+    assert_raises(Cent::FunctionError) { client.info }
+    assert_equal([["info", 0, Cent::FunctionError]], infos.map { [it.method, it.status_code, it.error.class] })
   end
 
   def test_close
@@ -761,6 +790,25 @@ class ClientTest < Minitest::Test
     p = b.info
     err = assert_raises(Cent::HTTPError) { b.send }
     assert_same err, assert_raises(Cent::HTTPError) { p.value }
+  end
+
+  # A broadcast failing as a whole raises its error, with no result (only
+  # partial errors carry one); where a result is given for it - the attempt
+  # broadcast_with_retry's block sees - failed holds every channel, each with
+  # that error.
+  def test_broadcast_whole_failure_fails_every_channel
+    @fake.on("broadcast", [503, {}, ""])
+    seen = nil
+    err = assert_raises(Cent::HTTPError) do
+      @client.broadcast_with_retry(channels: %w[a b], data: 1, max_attempts: 2) do |attempt|
+        seen = attempt.result
+        0
+      end
+    end
+
+    assert_equal %w[a b], seen.failed.map(&:channel)
+    assert(seen.failed.all? { it.error.is_a?(Cent::HTTPError) && it.error.status_code == 503 })
+    assert_equal 503, err.status_code
   end
 
   def test_batch_invalid_command_fails_before_sending

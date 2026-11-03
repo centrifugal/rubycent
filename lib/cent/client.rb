@@ -57,14 +57,18 @@ module Cent
     #   "http://localhost:8000/api". Each method is sent to it plus its name,
     #   "/publish".
     # @param api_endpoint_func [#call, nil] instead of api_endpoint, returns it
-    #   for each request, for addresses discovered rather than fixed
+    #   for each request, for addresses discovered rather than fixed. One
+    #   failing api_endpoint's rules fails the call with InvalidConfigError,
+    #   before sending; an exception of its own, with FunctionError.
     # @param api_key [String, nil] sent as X-API-Key. Leave it and
     #   bearer_token_func unset - nil, or "" - when requests are authenticated
     #   another way - mutual TLS, a proxy - or not at all.
     # @param bearer_token_func [#call, nil] returns the token sent as
     #   "Authorization: Bearer" with each request, for Centrifugo PRO's JWKS
     #   authentication of the API - an {Token::ApiTokens}'s +method(:token)+,
-    #   say. Not together with api_key.
+    #   say. Not together with api_key. An empty token, or one which is not
+    #   printable ASCII, fails the call with InvalidConfigError, before
+    #   sending; an exception of its own, with FunctionError.
     # @param http_options [Hash] Net::HTTP settings for the connections:
     #   +ca_file+, +cert+, +key+, +verify_mode+, +local_host+ and the like.
     # @param http_client [#call, nil] sends requests instead of Net::HTTP - a
@@ -407,10 +411,12 @@ module Cent
     end
 
     def roundtrip(method, make_body, deadline, status)
-      base = @endpoint || Client.check_endpoint(@endpoint_func.call, "api_endpoint_func")
+      base = @endpoint || Client.check_endpoint(function("api_endpoint_func") do
+        @endpoint_func.call
+      end, "api_endpoint_func")
       headers = @headers
       if @token_func
-        token = @token_func.call
+        token = function("bearer_token_func") { @token_func.call }
         unless token.is_a?(String) && !token.empty? && Client.header_value?(token)
           raise InvalidConfigError,
                 "bearer_token_func returned an empty token, not a String, or one which is not printable ASCII"
@@ -437,6 +443,14 @@ module Cent
       raise DecodeError, "#{method}: the reply cannot be decoded: #{e.message}"
     rescue SocketError, SystemCallError, IOError, OpenSSL::SSL::SSLError, Net::ProtocolError => e
       raise NetworkError, "#{method}: #{e.class}: #{e.message}"
+    end
+
+    # What a configured function returns; its own exception raised as a
+    # FunctionError naming it, the exception its cause.
+    def function(name)
+      yield
+    rescue StandardError => e
+      raise FunctionError, "#{name} raised #{e.class}: #{e.message}"
     end
 
     def send_http(url, headers, body, deadline, left)
