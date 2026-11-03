@@ -1201,11 +1201,11 @@ module Cent
     # @param id [String, nil] The device ID. Omit it on first registration: Centrifugo
     #   generates one and returns it. Pass the stored value to update the
     #   device.
-    # @param provider [String, nil] The provider of the device token: fcm, hms, apns or
-    #   webpush. Required.
+    # @param provider [String, nil] The provider of the device token. Required. One of: fcm,
+    #   hms, apns, webpush.
     # @param token [String, nil] The push token of the device. For webpush, it is the browser
     #   PushSubscription serialized as a JSON string. Required.
-    # @param platform [String, nil] The device platform: ios, android or web. Required.
+    # @param platform [String, nil] The device platform. Required. One of: ios, android, web.
     # @param user [String, nil] The user associated with the device.
     # @param meta [Hash{String => String}] Additional custom metadata of the device.
     # @param topics [Array<String>] The full list of the device's topic subscriptions, replacing
@@ -1372,7 +1372,7 @@ module Cent
     # Centrifugo PRO only.
     #
     # @param device_id [String, nil] The ID of the device. Required.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @param user [String, nil] An optional ownership guard: the update is applied only if the
     #   device currently belongs to this user. Otherwise the call fails with a
@@ -1421,7 +1421,7 @@ module Cent
     #
     # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
     #   device - anonymous ones included - gets on its next device_register.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [UserTopicUpdateResult]
@@ -1453,7 +1453,8 @@ module Cent
     #   unavailable.
     # @param limit_strategy [PushLimitStrategy, Hash, nil] Sets time constraints and rate limits. Only applies
     #   with a filter recipient; devices are then processed one by one
-    #   instead of in batches.
+    #   instead of in batches. Needs notification.expire_at: a push the limits
+    #   hold back is not tried forever.
     # @param analytics_uid [String, nil] The identifier for push notification analytics. If
     #   not set, uid is used.
     # @param localizations [Hash{String => PushLocalization, Hash}] Optional per language/locale localizations. Setting
@@ -1499,8 +1500,8 @@ module Cent
     #
     # @param analytics_uid [String, nil] The analytics_uid of the push notification (as in
     #   SendPushNotificationRequest). Required.
-    # @param status [String, nil] The status of the push notification: delivered or
-    #   interacted. Required.
+    # @param status [String, nil] The status of the push notification. Required. One of:
+    #   delivered, interacted.
     # @param device_id [String, nil] The Centrifugo device ID. Required.
     # @param msg_id [String, nil] The message ID issued by the provider.
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
@@ -1554,9 +1555,9 @@ module Cent
     # @param version_epoch [String, nil] Scopes version. A different epoch resets version
     #   comparison.
     # @param score [Integer, nil] Currently not used by the server API.
-    # @param key_mode [String, nil] Makes the publish conditional: "if_new" writes only if the
-    #   key does not exist, "if_exists" only if it exists. Empty always
-    #   writes.
+    # @param key_mode [String, nil] Makes the publish conditional: if_new writes only if the key
+    #   does not exist, if_exists only if it exists. Empty always writes.
+    #   One of: if_new, if_exists.
     # @param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil.
     # @return [MapPublishResult]
     # @raise [Error]
@@ -2284,11 +2285,11 @@ module Cent
     # @param id [String, nil] The device ID. Omit it on first registration: Centrifugo
     #   generates one and returns it. Pass the stored value to update the
     #   device.
-    # @param provider [String, nil] The provider of the device token: fcm, hms, apns or
-    #   webpush. Required.
+    # @param provider [String, nil] The provider of the device token. Required. One of: fcm,
+    #   hms, apns, webpush.
     # @param token [String, nil] The push token of the device. For webpush, it is the browser
     #   PushSubscription serialized as a JSON string. Required.
-    # @param platform [String, nil] The device platform: ios, android or web. Required.
+    # @param platform [String, nil] The device platform. Required. One of: ios, android, web.
     # @param user [String, nil] The user associated with the device.
     # @param meta [Hash{String => String}] Additional custom metadata of the device.
     # @param topics [Array<String>] The full list of the device's topic subscriptions, replacing
@@ -2456,7 +2457,7 @@ module Cent
     # is sent.
     #
     # @param device_id [String, nil] The ID of the device. Required.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @param user [String, nil] An optional ownership guard: the update is applied only if the
     #   device currently belongs to this user. Otherwise the call fails with a
@@ -2505,7 +2506,7 @@ module Cent
     #
     # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
     #   device - anonymous ones included - gets on its next device_register.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @return [Pending<UserTopicUpdateResult>]
     def user_topic_update(user:, op:, topics: nil)
@@ -2533,7 +2534,8 @@ module Cent
     #   unavailable.
     # @param limit_strategy [PushLimitStrategy, Hash, nil] Sets time constraints and rate limits. Only applies
     #   with a filter recipient; devices are then processed one by one
-    #   instead of in batches.
+    #   instead of in batches. Needs notification.expire_at: a push the limits
+    #   hold back is not tried forever.
     # @param analytics_uid [String, nil] The identifier for push notification analytics. If
     #   not set, uid is used.
     # @param localizations [Hash{String => PushLocalization, Hash}] Optional per language/locale localizations. Setting
@@ -2579,8 +2581,8 @@ module Cent
     #
     # @param analytics_uid [String, nil] The analytics_uid of the push notification (as in
     #   SendPushNotificationRequest). Required.
-    # @param status [String, nil] The status of the push notification: delivered or
-    #   interacted. Required.
+    # @param status [String, nil] The status of the push notification. Required. One of:
+    #   delivered, interacted.
     # @param device_id [String, nil] The Centrifugo device ID. Required.
     # @param msg_id [String, nil] The message ID issued by the provider.
     # @return [Pending<UpdatePushStatusResult>]
@@ -2635,9 +2637,9 @@ module Cent
     # @param version_epoch [String, nil] Scopes version. A different epoch resets version
     #   comparison.
     # @param score [Integer, nil] Currently not used by the server API.
-    # @param key_mode [String, nil] Makes the publish conditional: "if_new" writes only if the
-    #   key does not exist, "if_exists" only if it exists. Empty always
-    #   writes.
+    # @param key_mode [String, nil] Makes the publish conditional: if_new writes only if the key
+    #   does not exist, if_exists only if it exists. Empty always writes.
+    #   One of: if_new, if_exists.
     # @return [Pending<MapPublishResult>]
     def map_publish(
       channel:,
@@ -3359,11 +3361,11 @@ module Cent
     # @param id [String, nil] The device ID. Omit it on first registration: Centrifugo
     #   generates one and returns it. Pass the stored value to update the
     #   device.
-    # @param provider [String, nil] The provider of the device token: fcm, hms, apns or
-    #   webpush. Required.
+    # @param provider [String, nil] The provider of the device token. Required. One of: fcm,
+    #   hms, apns, webpush.
     # @param token [String, nil] The push token of the device. For webpush, it is the browser
     #   PushSubscription serialized as a JSON string. Required.
-    # @param platform [String, nil] The device platform: ios, android or web. Required.
+    # @param platform [String, nil] The device platform. Required. One of: ios, android, web.
     # @param user [String, nil] The user associated with the device.
     # @param meta [Hash{String => String}] Additional custom metadata of the device.
     # @param topics [Array<String>] The full list of the device's topic subscriptions, replacing
@@ -3531,7 +3533,7 @@ module Cent
     # The command making the call, checked as a Client checks it.
     #
     # @param device_id [String, nil] The ID of the device. Required.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @param user [String, nil] An optional ownership guard: the update is applied only if the
     #   device currently belongs to this user. Otherwise the call fails with a
@@ -3580,7 +3582,7 @@ module Cent
     #
     # @param user [String, nil] The user ID. Required. "" updates the global binding, which every
     #   device - anonymous ones included - gets on its next device_register.
-    # @param op [String, nil] The operation: add, remove or set. Required.
+    # @param op [String, nil] The operation. Required. One of: add, remove, set.
     # @param topics [Array<String>] The topics for the operation.
     # @return [Command]
     # @raise [InvalidRequestError]
@@ -3608,7 +3610,8 @@ module Cent
     #   unavailable.
     # @param limit_strategy [PushLimitStrategy, Hash, nil] Sets time constraints and rate limits. Only applies
     #   with a filter recipient; devices are then processed one by one
-    #   instead of in batches.
+    #   instead of in batches. Needs notification.expire_at: a push the limits
+    #   hold back is not tried forever.
     # @param analytics_uid [String, nil] The identifier for push notification analytics. If
     #   not set, uid is used.
     # @param localizations [Hash{String => PushLocalization, Hash}] Optional per language/locale localizations. Setting
@@ -3654,8 +3657,8 @@ module Cent
     #
     # @param analytics_uid [String, nil] The analytics_uid of the push notification (as in
     #   SendPushNotificationRequest). Required.
-    # @param status [String, nil] The status of the push notification: delivered or
-    #   interacted. Required.
+    # @param status [String, nil] The status of the push notification. Required. One of:
+    #   delivered, interacted.
     # @param device_id [String, nil] The Centrifugo device ID. Required.
     # @param msg_id [String, nil] The message ID issued by the provider.
     # @return [Command]
@@ -3710,9 +3713,9 @@ module Cent
     # @param version_epoch [String, nil] Scopes version. A different epoch resets version
     #   comparison.
     # @param score [Integer, nil] Currently not used by the server API.
-    # @param key_mode [String, nil] Makes the publish conditional: "if_new" writes only if the
-    #   key does not exist, "if_exists" only if it exists. Empty always
-    #   writes.
+    # @param key_mode [String, nil] Makes the publish conditional: if_new writes only if the key
+    #   does not exist, if_exists only if it exists. Empty always writes.
+    #   One of: if_new, if_exists.
     # @return [Command]
     # @raise [InvalidRequestError]
     def map_publish(

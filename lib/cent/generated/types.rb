@@ -44,13 +44,13 @@ module Cent
   # Centrifugo OSS parses it but ignores it.
   #
   # @!attribute [r] op
-  #   @return [String] The logical operation of a non-leaf node: "and", "or" or "not".
-  #     Empty for a leaf node.
+  #   @return [String] The logical operation of a non-leaf node. Empty for a leaf node.
+  #     One of: and, or, not.
   # @!attribute [r] key
   #   @return [String] The label key a leaf node compares.
   # @!attribute [r] cmp
-  #   @return [String] The comparison of a leaf node: "eq", "neq", "in", "nin", "ex",
-  #     "nex", "sw", "ew", "ct", "gt", "gte", "lt" or "lte".
+  #   @return [String] The comparison of a leaf node. One of: eq, neq, in, nin, ex, nex,
+  #     sw, ew, ct, gt, gte, lt, lte.
   # @!attribute [r] val
   #   @return [String] The value to compare with, for single-value comparisons.
   # @!attribute [r] vals
@@ -1337,7 +1337,7 @@ module Cent
   # DeviceTopicsUpdate changes the topics of devices. Centrifugo PRO only.
   #
   # @!attribute [r] op
-  #   @return [String] The operation: add, remove or set. Required.
+  #   @return [String] The operation. Required. One of: add, remove, set.
   # @!attribute [r] topics
   #   @return [Array<String>] The topics for the operation.
   class DeviceTopicsUpdate < Data.define(:op, :topics)
@@ -2006,6 +2006,7 @@ module Cent
   # @!attribute [r] expire_at
   #   @return [Integer] The Unix time in seconds when Centrifugo stops trying to
   #     send the notification. Not related to the providers' TTL fields.
+  #     Required when the request sets limit_strategy.
   class PushNotification < Data.define(:fcm, :hms, :apns, :webpush, :expire_at)
     include Message
 

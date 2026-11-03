@@ -9,13 +9,13 @@ module Cent
     # logical node combines its nodes: it sets op and nodes only.
     #
     # @!attribute [r] op
-    #   @return [String] The logical operation: "and", "or" or "not". Empty for a leaf node.
+    #   @return [String] The logical operation. Empty for a leaf node. One of: and, or, not.
     # @!attribute [r] key
     #   @return [String] The tag a leaf node compares.
     # @!attribute [r] cmp
-    #   @return [String] The comparison of a leaf node: "eq", "neq", "in", "nin", "ex"
-    #     (exists), "nex" (does not exist), "sw" (starts with), "ew" (ends with), "ct"
-    #     (contains), "gt", "gte", "lt" or "lte".
+    #   @return [String] The comparison of a leaf node: ex is exists, nex does not exist,
+    #     sw starts with, ew ends with, ct contains. One of: eq, neq, in, nin, ex,
+    #     nex, sw, ew, ct, gt, gte, lt, lte.
     # @!attribute [r] val
     #   @return [String] The value most comparisons compare the tag with.
     # @!attribute [r] vals
@@ -74,10 +74,11 @@ module Cent
     #   @return [String] The connection's transport: "websocket", "sse", "uni_sse" and
     #     the like.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] data
     #   @return [Object, nil] The custom data the client sent with its connect command, if any.
     # @!attribute [r] b64data
@@ -256,7 +257,11 @@ module Cent
     # @!attribute [r] labels
     #   @return [Hash{String => String}] PRO only — client labels attached to the centrifuge.Client by Centrifugo PRO.
     #     Parsed by OSS but not used (OSS does not populate centrifuge.ConnectReply.Labels).
-    class ConnectResult < Data.define(:user, :expire_at, :info, :b64info, :data, :b64data, :channels, :subs, :meta, :caps, :labels)
+    # @!attribute [r] profile
+    #   @return [String] Assigns the connection to a dictionary compression profile, as the
+    #     profile claim of a connection token does: it overrides the profile the
+    #     client declared. Centrifugo PRO only.
+    class ConnectResult < Data.define(:user, :expire_at, :info, :b64info, :data, :b64data, :channels, :subs, :meta, :caps, :labels, :profile)
       include Message
 
       def initialize(
@@ -270,7 +275,8 @@ module Cent
         subs: {},
         meta: nil,
         caps: [],
-        labels: {}
+        labels: {},
+        profile: ""
       )
         super
       end
@@ -291,6 +297,7 @@ module Cent
         Wire.put(w, "meta", meta, where, :json)
         Wire.put(w, "caps", caps, where, ChannelsCapability, :list)
         Wire.put(w, "labels", labels, where, :str, :map)
+        Wire.put(w, "profile", profile, where, :str)
         w
       end
 
@@ -310,7 +317,8 @@ module Cent
           subs: Wire.get(d, "subs", where, SubscribeOptions, :map),
           meta: Wire.get(d, "meta", where, :json),
           caps: Wire.get(d, "caps", where, ChannelsCapability, :list),
-          labels: Wire.get(d, "labels", where, :str, :map)
+          labels: Wire.get(d, "labels", where, :str, :map),
+          profile: Wire.get(d, "profile", where, :str)
         )
       end
     end
@@ -322,11 +330,11 @@ module Cent
     # @!attribute [r] channels
     #   @return [Array<String>] The channels, or channel patterns, it applies to.
     # @!attribute [r] allow
-    #   @return [Array<String>] The operations it grants: "sub" (subscribe), "pub" (publish),
-    #     "hst" (history) and "prs" (presence).
+    #   @return [Array<String>] The operations it grants: sub is subscribe, pub publish, hst
+    #     history, prs presence. One of: sub, pub, hst, prs.
     # @!attribute [r] match
-    #   @return [String] How channels are matched: empty for exact names, "wildcard" or
-    #     "regex".
+    #   @return [String] How channels are matched: empty for exact names. One of:
+    #     wildcard, regex.
     class ChannelsCapability < Data.define(:channels, :allow, :match)
       include Message
 
@@ -363,10 +371,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] meta
@@ -486,10 +495,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] channel
@@ -639,8 +649,8 @@ module Cent
     #   @return [SubscribeOptionOverride, nil] Overrides channel options of the namespace for this
     #     subscription.
     # @!attribute [r] allow
-    #   @return [Array<String>] Capabilities granted in the channel for this subscription:
-    #     "sub", "pub", "hst" and "prs". Centrifugo PRO only.
+    #   @return [Array<String>] Capabilities granted in the channel for this subscription.
+    #     Centrifugo PRO only. One of: sub, pub, hst, prs.
     # @!attribute [r] server_tags_filter
     #   @return [FilterNode, nil] Makes the subscription receive only publications
     #     whose tags match it. Centrifugo PRO only.
@@ -701,10 +711,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] channel
@@ -856,10 +867,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] channel
@@ -950,8 +962,9 @@ module Cent
     # @!attribute [r] score
     #   @return [Integer] Not used by Centrifugo yet.
     # @!attribute [r] key_mode
-    #   @return [String] Makes the publication conditional: "if_new" publishes only a key
-    #     which does not exist yet, "if_exists" only one which does.
+    #   @return [String] Makes the publication conditional: if_new publishes only a key
+    #     which does not exist yet, if_exists only one which does.
+    #     One of: if_new, if_exists.
     # @!attribute [r] stream_data
     #   @return [Object, nil] Not used by Centrifugo yet.
     # @!attribute [r] b64stream_data
@@ -1035,10 +1048,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] channel
@@ -1150,10 +1164,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] method
@@ -1263,10 +1278,11 @@ module Cent
     # @!attribute [r] transport
     #   @return [String] The connection's transport.
     # @!attribute [r] protocol
-    #   @return [String] The client protocol: "json" or "protobuf".
+    #   @return [String] The client protocol. One of: json, protobuf.
     # @!attribute [r] encoding
-    #   @return [String] "binary" when the proxy has binary_encoding enabled, so that
-    #     payloads come in the b64 fields, and "json" otherwise.
+    #   @return [String] Binary when the proxy has binary_encoding enabled, so that
+    #     payloads come in the b64 fields, and json otherwise.
+    #     One of: json, binary.
     # @!attribute [r] user
     #   @return [String] The connection's user ID.
     # @!attribute [r] channel
@@ -1479,9 +1495,9 @@ module Cent
     # @!attribute [r] channel
     #   @return [String] The channel it happened in.
     # @!attribute [r] type
-    #   @return [String] "occupied" when the channel got its first subscriber, "vacated"
+    #   @return [String] Occupied when the channel got its first subscriber, vacated
     #     when it lost its last one. More types may come; the field is a string,
-    #     not an enum, for JSON interoperability.
+    #     not an enum, for JSON interoperability. One of: occupied, vacated.
     class ChannelEvent < Data.define(:time_ms, :channel, :type)
       include Message
 
