@@ -179,6 +179,39 @@ mount SUBSCRIBE_HANDLER, at: "/centrifugo/subscribe"
 The module's methods are plain to test:
 `CentrifugoProxy.subscribe(Cent::Proxy::SubscribeRequest.new(user: "42", channel: "room:1"), nil)`.
 
+## Pages and positions
+
+The methods which return a page at a time - `history`, `device_list`,
+`device_topic_list`, `user_topic_list` and `map_read_state` - each have an
+`_all` method taking the same arguments, which reads page after page: with a
+block it yields every item, without one it returns an `Enumerator`. A page is
+read when the iteration reaches it, so `first(10)` or a `break` reads no more:
+
+```ruby
+client.history_all(channel: "news", limit: 100) { |pub| archive(pub) }
+client.device_list_all(filter: { users: ["42"] }).each_slice(50) { |devices| notify(devices) }
+```
+
+`history_all` needs a `limit` of 1 or more, the page size, and reads forward
+only. `map_read_state_all` reads every page after the first at the first
+one's revision, so that a map reset between pages raises
+`Cent::UnrecoverablePositionError` rather than mixing two states: start again
+then. Items changed while iterating - a device registered meanwhile - may or
+may not be seen.
+
+The results of `publish`, `history`, `map_read_state` and `map_read_stream`
+give their offset and epoch as a `Cent::StreamPosition`: what came after a
+publication is
+
+```ruby
+pos = client.publish(channel: "news", data: { text: "hi" }).position
+client.history(channel: "news", since: pos, limit: 100)
+```
+
+A position whose epoch is no longer the stream's raises
+`Cent::UnrecoverablePositionError`: the stream was reset, and reading it from
+its start is the only recovery.
+
 ## Payloads
 
 `data`, `info`, `meta` and the other payloads are JSON values, given as the

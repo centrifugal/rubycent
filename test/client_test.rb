@@ -26,7 +26,8 @@ class ClientTest < Minitest::Test
   end
 
   def test_every_method_reaches_its_endpoint_with_its_result
-    methods = Cent::ClientMethods.public_instance_methods(false) - %i[broadcast broadcast_with_retry]
+    methods = Cent::ClientMethods.public_instance_methods(false).reject { it.end_with?("_all") } -
+              %i[broadcast broadcast_with_retry]
 
     assert_operator methods.size, :>, 35
     methods.each do |m|
@@ -44,6 +45,13 @@ class ClientTest < Minitest::Test
     params = lambda(&:parameters)
     Cent::ClientMethods.public_instance_methods(false).each do |m|
       next if m == :broadcast_with_retry
+
+      if m.end_with?("_all")
+        # A paged method's iterator takes its arguments, and a block.
+        assert_equal [*params.call(Cent::Client.instance_method(m.name.delete_suffix("_all"))), %i[block block]],
+                     params.call(Cent::Client.instance_method(m)), m
+        next
+      end
 
       fields = params.call(Cent::Client.instance_method(m))
 

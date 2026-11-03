@@ -1065,6 +1065,44 @@ module Cent
       end
     end
 
+    # Every publication of a channel's history, oldest first, a page of limit
+    # at a time: from since when it is set, from the start of what the channel
+    # keeps otherwise. limit is the page size, so it must be 1 or more, and
+    # reverse is refused, before anything is sent: since reads forward only.
+    # The iteration ends after a page shorter than limit. A publication made
+    # while iterating may or may not be seen. An epoch which changed since a
+    # page was read - the history was lost, with a Redis restart say - raises
+    # UnrecoverablePositionError: reading again from the start is the only way
+    # on.
+    #
+    # Returns an Enumerator, or with a block, yields each item and returns nil. A
+    # page is read when the iteration reaches it, each call bounded by timeout,
+    # and leaving the iteration early reads no further page. An error raises
+    # from the iteration, after the items before it.
+    #
+    # @param channel [String, nil] The name of the channel. Required.
+    # @param limit [Integer, nil] The maximum number of publications to return; -1 returns all
+    #   the channel keeps. If not set, only the current stream position is
+    #   returned, without publications.
+    # @param since [StreamPosition, Hash, nil] Returns publications after this stream position.
+    # @param reverse [Boolean, nil] Iterates in reverse order, from latest to earliest.
+    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @yieldparam item [Publication]
+    # @return [Enumerator<Publication>, nil]
+    # @raise [Error]
+    def history_all(
+      channel:,
+      limit: nil,
+      since: nil,
+      reverse: nil,
+      timeout: nil,
+      &block
+    )
+      pages("history", timeout, block) do
+        Requests.history(channel, limit, since, reverse)
+      end
+    end
+
     # Removes publications from the history of a channel.
     # The current top stream position is kept, so clients do not get
     # disconnected because of insufficient state.
@@ -1419,6 +1457,55 @@ module Cent
       end
     end
 
+    # Every device the request selects, a page at a time: limit is the page
+    # size, the server's default when unset. A device registered or removed
+    # while iterating may or may not be seen.
+    #
+    # Returns an Enumerator, or with a block, yields each item and returns nil. A
+    # page is read when the iteration reaches it, each call bounded by timeout,
+    # and leaving the iteration early reads no further page. An error raises
+    # from the iteration, after the items before it.
+    #
+    # Centrifugo PRO only.
+    #
+    # @param filter [DeviceFilter, Hash, nil] Selects the devices to list: all of them when unset.
+    # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
+    #   result.
+    # @param include_meta [Boolean, nil] Includes meta of each device.
+    # @param include_topics [Boolean, nil] Includes topics of each device.
+    # @param include_webpush_keys [Boolean, nil] Includes webpush_keys of each device (webpush
+    #   only).
+    # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
+    #   empty for the first page.
+    # @param limit [Integer, nil] The maximum number of devices to return.
+    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @yieldparam item [Device]
+    # @return [Enumerator<Device>, nil]
+    # @raise [Error]
+    def device_list_all(
+      filter: nil,
+      include_total_count: nil,
+      include_meta: nil,
+      include_topics: nil,
+      include_webpush_keys: nil,
+      cursor: nil,
+      limit: nil,
+      timeout: nil,
+      &block
+    )
+      pages("device_list", timeout, block) do
+        Requests.device_list(
+          filter,
+          include_total_count,
+          include_meta,
+          include_topics,
+          include_webpush_keys,
+          cursor,
+          limit
+        )
+      end
+    end
+
     # Returns a paginated list of device topic
     # subscriptions. Centrifugo PRO only.
     #
@@ -1441,6 +1528,47 @@ module Cent
       timeout: nil
     )
       invoke("device_topic_list", DeviceTopicListResult, timeout) do
+        Requests.device_topic_list(
+          filter,
+          include_total_count,
+          include_device,
+          cursor,
+          limit
+        )
+      end
+    end
+
+    # Every device topic the request selects, a page at a time, as
+    # device_list_all reads devices.
+    #
+    # Returns an Enumerator, or with a block, yields each item and returns nil. A
+    # page is read when the iteration reaches it, each call bounded by timeout,
+    # and leaving the iteration early reads no further page. An error raises
+    # from the iteration, after the items before it.
+    #
+    # Centrifugo PRO only.
+    #
+    # @param filter [DeviceTopicFilter, Hash, nil] Selects the device topics to list.
+    # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
+    #   result.
+    # @param include_device [Boolean, nil] Includes the Device of each item.
+    # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
+    #   empty for the first page.
+    # @param limit [Integer, nil] The maximum number of items to return.
+    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @yieldparam item [DeviceTopic]
+    # @return [Enumerator<DeviceTopic>, nil]
+    # @raise [Error]
+    def device_topic_list_all(
+      filter: nil,
+      include_total_count: nil,
+      include_device: nil,
+      cursor: nil,
+      limit: nil,
+      timeout: nil,
+      &block
+    )
+      pages("device_topic_list", timeout, block) do
         Requests.device_topic_list(
           filter,
           include_total_count,
@@ -1496,6 +1624,39 @@ module Cent
       timeout: nil
     )
       invoke("user_topic_list", UserTopicListResult, timeout) do
+        Requests.user_topic_list(filter, include_total_count, cursor, limit)
+      end
+    end
+
+    # Every user topic the request selects, a page at a time, as
+    # device_list_all reads devices.
+    #
+    # Returns an Enumerator, or with a block, yields each item and returns nil. A
+    # page is read when the iteration reaches it, each call bounded by timeout,
+    # and leaving the iteration early reads no further page. An error raises
+    # from the iteration, after the items before it.
+    #
+    # Centrifugo PRO only.
+    #
+    # @param filter [UserTopicFilter, Hash, nil] Selects the user topics to list.
+    # @param include_total_count [Boolean, nil] Includes the total count for the filter in the
+    #   result.
+    # @param cursor [String, nil] The pagination cursor: next_cursor of the previous page,
+    #   empty for the first page.
+    # @param limit [Integer, nil] The maximum number of items to return.
+    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @yieldparam item [UserTopic]
+    # @return [Enumerator<UserTopic>, nil]
+    # @raise [Error]
+    def user_topic_list_all(
+      filter: nil,
+      include_total_count: nil,
+      cursor: nil,
+      limit: nil,
+      timeout: nil,
+      &block
+    )
+      pages("user_topic_list", timeout, block) do
         Requests.user_topic_list(filter, include_total_count, cursor, limit)
       end
     end
@@ -1734,6 +1895,63 @@ module Cent
       timeout: nil
     )
       invoke("map_read_state", MapReadStateResult, timeout) do
+        Requests.map_read_state(
+          channel,
+          cursor,
+          limit,
+          key,
+          asc,
+          revision_offset,
+          revision_epoch
+        )
+      end
+    end
+
+    # Every entry of a map channel's state, a page at a time: limit is the page
+    # size. Every page after the first is read at the first one's revision - its
+    # position, as revision_offset and revision_epoch, unless the request sets
+    # them - so that a state reset between pages raises
+    # UnrecoverablePositionError instead of mixing two states: read again from
+    # the first page then. Entries changed while iterating may be seen in either
+    # version; for a consistent view, read the changes since the first page's
+    # position with map_read_stream.
+    #
+    # Returns an Enumerator, or with a block, yields each item and returns nil. A
+    # page is read when the iteration reaches it, each call bounded by timeout,
+    # and leaving the iteration early reads no further page. An error raises
+    # from the iteration, after the items before it.
+    #
+    # @param channel [String, nil] The name of the map channel. Required.
+    # @param cursor [String, nil] The pagination cursor from the previous page. Empty starts
+    #   from the beginning.
+    # @param limit [Integer, nil] The maximum number of entries per page: -1 means no limit, 0
+    #   returns only the stream position. Page sizes may exceed it with the
+    #   Redis map broker.
+    # @param key [String, nil] Reads a single entry by exact key. cursor and limit are ignored
+    #   when it is set.
+    # @param asc [Boolean, nil] Sorts ordered state by score ascending instead of descending.
+    #   Ignored for unordered channels.
+    # @param revision_offset [Integer, nil] The offset of the position from a previous state
+    #   read, used with revision_epoch.
+    # @param revision_epoch [String, nil] The epoch of the position from a previous state
+    #   read. If the epoch changed, the call fails with an unrecoverable
+    #   position error.
+    # @param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.
+    # @yieldparam item [MapEntry]
+    # @return [Enumerator<MapEntry>, nil]
+    # @raise [Error]
+    def map_read_state_all(
+      channel:,
+      cursor: nil,
+      limit: nil,
+      key: nil,
+      asc: nil,
+      revision_offset: nil,
+      revision_epoch: nil,
+      timeout: nil,
+      &block
+    )
+      pages("map_read_state", timeout, block) do
         Requests.map_read_state(
           channel,
           cursor,

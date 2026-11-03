@@ -44,6 +44,7 @@ module Cent
   # calls wait without blocking other fibers.
   class Client
     include ClientMethods
+    include Pages
 
     # The User-Agent of every request, unless headers set one.
     USER_AGENT = "rubycent/#{VERSION.split(".").first}".freeze

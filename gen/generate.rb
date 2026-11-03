@@ -356,6 +356,53 @@ def emit_requests(out, cmds)
   out << "  end\n"
 end
 
+# The paged methods (spec 3.8), each with a <method>_all iterating its items:
+# the items' type, and what the iterator's docs say of its pages. Paging is in
+# Cent::Pages.
+PAGED = {
+  "history" => ["Publication", <<~DOC.lines(chomp: true)],
+    Every publication of a channel's history, oldest first, a page of limit
+    at a time: from since when it is set, from the start of what the channel
+    keeps otherwise. limit is the page size, so it must be 1 or more, and
+    reverse is refused, before anything is sent: since reads forward only.
+    The iteration ends after a page shorter than limit. A publication made
+    while iterating may or may not be seen. An epoch which changed since a
+    page was read - the history was lost, with a Redis restart say - raises
+    UnrecoverablePositionError: reading again from the start is the only way
+    on.
+  DOC
+  "device_list" => ["Device", <<~DOC.lines(chomp: true)],
+    Every device the request selects, a page at a time: limit is the page
+    size, the server's default when unset. A device registered or removed
+    while iterating may or may not be seen.
+  DOC
+  "device_topic_list" => ["DeviceTopic", <<~DOC.lines(chomp: true)],
+    Every device topic the request selects, a page at a time, as
+    device_list_all reads devices.
+  DOC
+  "user_topic_list" => ["UserTopic", <<~DOC.lines(chomp: true)],
+    Every user topic the request selects, a page at a time, as
+    device_list_all reads devices.
+  DOC
+  "map_read_state" => ["MapEntry", <<~DOC.lines(chomp: true)]
+    Every entry of a map channel's state, a page at a time: limit is the page
+    size. Every page after the first is read at the first one's revision - its
+    position, as revision_offset and revision_epoch, unless the request sets
+    them - so that a state reset between pages raises
+    UnrecoverablePositionError instead of mixing two states: read again from
+    the first page then. Entries changed while iterating may be seen in either
+    version; for a consistent view, read the changes since the first page's
+    position with map_read_stream.
+  DOC
+}.freeze
+
+PAGES_DOC = <<~DOC.lines(chomp: true)
+  Returns an Enumerator, or with a block, yields each item and returns nil. A
+  page is read when the iteration reaches it, each call bounded by timeout,
+  and leaving the iteration early reads no further page. An error raises
+  from the iteration, after the items before it.
+DOC
+
 TIMEOUT_DOC = "@param timeout [Numeric, nil] Seconds bounding the call: request_timeout when nil."
 
 BROADCAST_DOC = <<~DOC.lines(chomp: true)
@@ -506,6 +553,16 @@ def emit_client_methods(out, cmds)
       doc = [*method_doc(c), "", *param_docs(c.request), TIMEOUT_DOC, "@return [#{c.result}]", "@raise [Error]"]
       method_body(out, doc, signature("    ", c.method, [*params, "timeout: nil"]),
                   ["invoke(#{c.method.inspect}, #{c.result}, timeout) do", "  #{call.gsub("\n", "\n  ")}", "end"])
+      if (paged = PAGED[c.method])
+        item, text = paged
+        out << "\n"
+        pro = c.pro_only ? ["", "Centrifugo PRO only."] : []
+        doc = [*text, "", *PAGES_DOC, *pro, "", *param_docs(c.request),
+               "@param timeout [Numeric, nil] Seconds bounding each page's call: request_timeout when nil.",
+               "@yieldparam item [#{item}]", "@return [Enumerator<#{item}>, nil]", "@raise [Error]"]
+        method_body(out, doc, signature("    ", "#{c.method}_all", [*params, "timeout: nil"], block: "block"),
+                    ["pages(#{c.method.inspect}, timeout, block) do", "  #{call.gsub("\n", "\n  ")}", "end"])
+      end
     end
   end
 end
@@ -568,6 +625,8 @@ def generate
     schema.messages.each { PRESENCE << it.name if Proto.presence_wrapper?(it) && !WRAPPERS.key?(it.name) }
   end
   cmds = commands(api)
+  missing = PAGED.keys - cmds.map(&:method)
+  abort "api.proto: no method #{missing.join(", ")}, which has a <method>_all" unless missing.empty?
   skip = skipped(api, cmds)
   # A request which is also another message's field would need a type.
   api.messages.reject { WIRE_ONLY.include?(it.name) }.each do |m|
