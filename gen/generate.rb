@@ -308,19 +308,19 @@ end
 # A constant per value of each string field whose comment lists its values,
 # "One of: ...". The fields stay strings: a value Centrifugo adds is sendable
 # before the SDK names it.
-def emit_consts(out, messages, indent, proto)
+def emit_consts(out, messages, indent, proto, pins_file)
   groups = begin
-    Proto.const_groups(messages)
+    Proto.const_groups(messages, Proto.parse_pins(File.read(File.join(ROOT, "gen", pins_file)), pins_file))
   rescue Proto::Error => e
-    abort "#{proto}: #{e.message}"
+    abort "#{proto}: #{e.message}: name it in gen/#{pins_file}, as the spec's table of 3.3 does"
   end
   groups.each do |g|
-    owners = g.messages.size > 1 ? "#{g.messages[0...-1].join(", ")} and #{g.messages.last}" : g.messages.first
+    fields = g.fields.size > 1 ? "#{g.fields[0...-1].join(", ")} and #{g.fields.last}" : g.fields.first
     out << "\n"
-    out << comment(wrap("The values of the #{g.field} field of #{owners}. The field is a String: a value " \
-                        "Centrifugo sends or accepts which these do not name is still a valid one.", 76), indent)
+    out << comment(wrap("The values of #{fields}. The field is a String: a value Centrifugo sends or " \
+                        "accepts which these do not name is still a valid one.", 76), indent)
     g.listed.each do |v|
-      out << "\n#{indent}# The #{"#{g.prefix} " if g.prefix}#{g.field} #{v.inspect}.\n"
+      out << "\n#{indent}# The #{g.name} #{v.inspect}.\n"
       out << "#{indent}#{g.const_name(v)} = #{v.inspect}\n"
     end
   end
@@ -648,7 +648,8 @@ def generate
     emit_message(types, m, "  ", "server API")
   end
   requests = cmds.map { it.request.name }
-  emit_consts(types, api.messages.select { !skip.include?(it.name) || requests.include?(it.name) }, "  ", "api.proto")
+  emit_consts(types, api.messages.select { !skip.include?(it.name) || requests.include?(it.name) }, "  ", "api.proto",
+              "constants_api.txt")
   types << "end\n"
 
   methods = +format(HEADER, "api.proto")
@@ -673,7 +674,7 @@ def generate
     proxy_types << "\n" unless i.zero?
     emit_message(proxy_types, m, "    ", "proxy protocol")
   end
-  emit_consts(proxy_types, proxy_messages(proxy), "    ", "proxy.proto")
+  emit_consts(proxy_types, proxy_messages(proxy), "    ", "proxy.proto", "constants_proxy.txt")
   proxy_types << "  end\nend\n"
 
   { "types.rb" => types, "methods.rb" => methods, "proxy_types.rb" => proxy_types }

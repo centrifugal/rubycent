@@ -12,6 +12,7 @@ under concurrency and hard to misuse. Read this before changing code.
 |---|---|
 | `proto/api.proto`, `proto/proxy.proto` | Copies of Centrifugo's protos, from a released tag (`CENTRIFUGO_REF=v6.10.2 bundle exec rake proto:sync`) |
 | `gen/required_fields.txt` | The fields the protos mark "Required.", made required keywords - of the methods and of the message types - and checked for a value before sending. Generation fails when the protos' list differs: a newly required field breaks every call without it, so review the change - fix the proto upstream if Centrifugo accepts the field absent - then `ruby gen/generate.rb --accept-required` |
+| `gen/constants_api.txt`, `gen/constants_proxy.txt` | The names of the constants of the fields with a "One of:" sentence, as the spec's table of 3.3 pins them. Generation fails on a field they lack, a pin no field uses, and one name over different values: name a new field here as the spec does |
 | `gen/` | The generator: `proto.rb` parses the protos, `generate.rb` writes `lib/cent/generated/` |
 | `lib/cent/generated/` | Generated - never edited: the result and message types, the methods of Client, Batch and Command (`methods.rb`), the proxy types |
 | `lib/cent/client.rb` | `Client`: configuration, the request path, broadcast and its retry, close |

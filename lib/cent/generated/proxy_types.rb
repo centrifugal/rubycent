@@ -1710,125 +1710,125 @@ module Cent
       end
     end
 
-    # The values of the op field of FilterNode. The field is a String: a value
-    # Centrifugo sends or accepts which these do not name is still a valid one.
+    # The values of FilterNode.op. The field is a String: a value Centrifugo sends
+    # or accepts which these do not name is still a valid one.
 
-    # The op "and".
-    OP_AND = "and"
+    # The FilterNodeOp "and".
+    FILTER_NODE_OP_AND = "and"
 
-    # The op "or".
-    OP_OR = "or"
+    # The FilterNodeOp "or".
+    FILTER_NODE_OP_OR = "or"
 
-    # The op "not".
-    OP_NOT = "not"
+    # The FilterNodeOp "not".
+    FILTER_NODE_OP_NOT = "not"
 
-    # The values of the cmp field of FilterNode. The field is a String: a value
-    # Centrifugo sends or accepts which these do not name is still a valid one.
+    # The values of FilterNode.cmp. The field is a String: a value Centrifugo
+    # sends or accepts which these do not name is still a valid one.
 
-    # The cmp "eq".
+    # The Cmp "eq".
     CMP_EQ = "eq"
 
-    # The cmp "neq".
+    # The Cmp "neq".
     CMP_NEQ = "neq"
 
-    # The cmp "in".
+    # The Cmp "in".
     CMP_IN = "in"
 
-    # The cmp "nin".
+    # The Cmp "nin".
     CMP_NIN = "nin"
 
-    # The cmp "ex".
+    # The Cmp "ex".
     CMP_EX = "ex"
 
-    # The cmp "nex".
+    # The Cmp "nex".
     CMP_NEX = "nex"
 
-    # The cmp "sw".
+    # The Cmp "sw".
     CMP_SW = "sw"
 
-    # The cmp "ew".
+    # The Cmp "ew".
     CMP_EW = "ew"
 
-    # The cmp "ct".
+    # The Cmp "ct".
     CMP_CT = "ct"
 
-    # The cmp "gt".
+    # The Cmp "gt".
     CMP_GT = "gt"
 
-    # The cmp "gte".
+    # The Cmp "gte".
     CMP_GTE = "gte"
 
-    # The cmp "lt".
+    # The Cmp "lt".
     CMP_LT = "lt"
 
-    # The cmp "lte".
+    # The Cmp "lte".
     CMP_LTE = "lte"
 
-    # The values of the protocol field of ConnectRequest, RefreshRequest,
-    # SubscribeRequest, PublishRequest, MapPublishRequest, MapRemoveRequest,
-    # RPCRequest and SubRefreshRequest. The field is a String: a value Centrifugo
+    # The values of ConnectRequest.protocol, RefreshRequest.protocol,
+    # SubscribeRequest.protocol, PublishRequest.protocol,
+    # MapPublishRequest.protocol, MapRemoveRequest.protocol, RPCRequest.protocol
+    # and SubRefreshRequest.protocol. The field is a String: a value Centrifugo
     # sends or accepts which these do not name is still a valid one.
 
-    # The protocol "json".
+    # The Protocol "json".
     PROTOCOL_JSON = "json"
 
-    # The protocol "protobuf".
+    # The Protocol "protobuf".
     PROTOCOL_PROTOBUF = "protobuf"
 
-    # The values of the encoding field of ConnectRequest, RefreshRequest,
-    # SubscribeRequest, PublishRequest, MapPublishRequest, MapRemoveRequest,
-    # RPCRequest and SubRefreshRequest. The field is a String: a value Centrifugo
+    # The values of ConnectRequest.encoding, RefreshRequest.encoding,
+    # SubscribeRequest.encoding, PublishRequest.encoding,
+    # MapPublishRequest.encoding, MapRemoveRequest.encoding, RPCRequest.encoding
+    # and SubRefreshRequest.encoding. The field is a String: a value Centrifugo
     # sends or accepts which these do not name is still a valid one.
 
-    # The encoding "json".
+    # The Encoding "json".
     ENCODING_JSON = "json"
 
-    # The encoding "binary".
+    # The Encoding "binary".
     ENCODING_BINARY = "binary"
 
-    # The values of the allow field of ChannelsCapability and SubscribeResult. The
-    # field is a String: a value Centrifugo sends or accepts which these do not
-    # name is still a valid one.
+    # The values of ChannelsCapability.allow and SubscribeResult.allow. The field
+    # is a String: a value Centrifugo sends or accepts which these do not name is
+    # still a valid one.
 
-    # The allow "sub".
+    # The Allow "sub".
     ALLOW_SUB = "sub"
 
-    # The allow "pub".
+    # The Allow "pub".
     ALLOW_PUB = "pub"
 
-    # The allow "hst".
+    # The Allow "hst".
     ALLOW_HST = "hst"
 
-    # The allow "prs".
+    # The Allow "prs".
     ALLOW_PRS = "prs"
 
-    # The values of the match field of ChannelsCapability. The field is a String:
-    # a value Centrifugo sends or accepts which these do not name is still a valid
-    # one.
-
-    # The match "wildcard".
-    MATCH_WILDCARD = "wildcard"
-
-    # The match "regex".
-    MATCH_REGEX = "regex"
-
-    # The values of the key_mode field of MapPublishResult. The field is a String:
-    # a value Centrifugo sends or accepts which these do not name is still a valid
-    # one.
-
-    # The key_mode "if_new".
-    KEY_MODE_IF_NEW = "if_new"
-
-    # The key_mode "if_exists".
-    KEY_MODE_IF_EXISTS = "if_exists"
-
-    # The values of the type field of ChannelEvent. The field is a String: a value
+    # The values of ChannelsCapability.match. The field is a String: a value
     # Centrifugo sends or accepts which these do not name is still a valid one.
 
-    # The type "occupied".
-    TYPE_OCCUPIED = "occupied"
+    # The CapabilityMatch "wildcard".
+    CAPABILITY_MATCH_WILDCARD = "wildcard"
 
-    # The type "vacated".
-    TYPE_VACATED = "vacated"
+    # The CapabilityMatch "regex".
+    CAPABILITY_MATCH_REGEX = "regex"
+
+    # The values of MapPublishResult.key_mode. The field is a String: a value
+    # Centrifugo sends or accepts which these do not name is still a valid one.
+
+    # The KeyMode "if_new".
+    KEY_MODE_IF_NEW = "if_new"
+
+    # The KeyMode "if_exists".
+    KEY_MODE_IF_EXISTS = "if_exists"
+
+    # The values of ChannelEvent.type. The field is a String: a value Centrifugo
+    # sends or accepts which these do not name is still a valid one.
+
+    # The ChannelEventType "occupied".
+    CHANNEL_EVENT_TYPE_OCCUPIED = "occupied"
+
+    # The ChannelEventType "vacated".
+    CHANNEL_EVENT_TYPE_VACATED = "vacated"
   end
 end

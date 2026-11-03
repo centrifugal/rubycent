@@ -55,26 +55,38 @@ module Proto
     end
   end
 
-  # The constants of a string field with listed values: the values listed, the
-  # messages whose field of that name lists exactly them, and the message
-  # naming them when the field's name alone would be ambiguous.
-  ConstGroup = Struct.new(:field, :listed, :messages, :prefix, keyword_init: true) do
-    # The constant for one of the values, as Ruby spells it: OP_ADD for op's
-    # "add", FILTER_NODE_OP_AND with the prefix FilterNode.
-    def const_name(value)
-      [prefix && Proto.snake(prefix), field, value].compact.join("_").upcase
-    end
+  # The constants of a pinned name: the name, as the spec's table of 3.3 gives
+  # it (FilterNodeOp), the values listed, and the messages and fields listing
+  # them.
+  ConstGroup = Struct.new(:name, :listed, :fields, keyword_init: true) do
+    # The constant for one of the values, as Ruby spells it: OP_ADD for Op's
+    # "add", FILTER_NODE_OP_AND for FilterNodeOp's "and".
+    def const_name(value) = "#{Proto.snake(name)}_#{value}".upcase
   end
 
   def self.snake(camel) = camel.gsub(/([a-z\d])([A-Z])/, '\1_\2').gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').downcase
 
-  # The fields of +messages+ with listed values, grouped, in the order of the
-  # proto. Where fields of one name list different values in different
-  # messages, the set listed in the most messages keeps the short name and the
-  # others are named by their message too - OP_ADD for the topic updates,
-  # FILTER_NODE_OP_AND for FilterNode - and a tie names all of them so.
-  def self.const_groups(messages)
-    by_field = {}
+  # The pins of a constants list: "Message.field Name" or "*.field Name" a
+  # line, # comments and blank lines skipped, as [selector, name] pairs.
+  def self.parse_pins(text, where)
+    text.each_line.with_index(1).filter_map do |line, n|
+      line = line.strip
+      next if line.empty? || line.start_with?("#")
+
+      m = line.match(/\A((?:\w+|\*)\.\w+)\s+([A-Z][A-Za-z0-9]*)\z/)
+      raise Error, "#{where}:#{n}: not a pin, Message.field Name: #{line}" unless m
+
+      [m[1], m[2]]
+    end
+  end
+
+  # The fields of +messages+ with listed values, by the names +pins+ give
+  # them, in the order of the proto. It fails on a field with a "One of:"
+  # sentence no pin names, a pin no field uses, and one name over different
+  # values: the names never change because an unrelated message appeared.
+  def self.const_groups(messages, pins)
+    used = Set.new
+    groups = {}
     messages.each do |m|
       m.fields.each do |f|
         values = begin
@@ -84,28 +96,22 @@ module Proto
         end
         next if values.nil?
 
-        groups = (by_field[f.name] ||= [])
-        g = groups.find { it.listed == values }
-        groups << (g = ConstGroup.new(field: f.name, listed: values, messages: [])) if g.nil?
-        g.messages << m.name
-      end
-    end
-    by_field.flat_map do |name, groups|
-      if groups.size > 1
-        most = groups.max_by { it.messages.size }
-        tie = groups.any? { it != most && it.messages.size == most.messages.size }
-        groups.each do |g|
-          next if g == most && !tie
-          if g.messages.size > 1
-            raise Error, "field #{name} lists #{g.listed.join(", ")} in #{g.messages.join(", ")} " \
-                         "and other values elsewhere: cannot name its constants"
-          end
+        pin = pins.find { |sel, _| sel == "#{m.name}.#{f.name}" } || pins.find { |sel, _| sel == "*.#{f.name}" }
+        raise Error, "#{m.name}.#{f.name} lists its values, but no pin names its constants" if pin.nil?
 
-          g.prefix = g.messages.first
+        used << pin
+        g = (groups[pin[1]] ||= ConstGroup.new(name: pin[1], listed: values, fields: []))
+        if g.listed != values
+          raise Error, "#{pin[1]} names #{g.listed.join(", ")} in #{g.fields.join(", ")} " \
+                       "but #{values.join(", ")} in #{m.name}.#{f.name}"
         end
+        g.fields << "#{m.name}.#{f.name}"
       end
-      groups
     end
+    unused = pins - used.to_a
+    raise Error, "no field uses the pin #{unused.map { it.join(" ") }.join(", ")}" unless unused.empty?
+
+    groups.values
   end
 
   # A presence wrapper: a message with one field which Centrifugo reads by
