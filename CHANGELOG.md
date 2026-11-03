@@ -16,6 +16,12 @@ Migrating from cent 4: see [MIGRATING.md](MIGRATING.md).
 * `Cent::Endpoints`: the token and shared poll signature endpoints client SDKs call, and the JWKS endpoint. `Cent::Proxy`: a handler for every proxy type, generated from `proxy.proto`. Each is a Rack app, with a framework-free core.
 * `Cent::SharedPoll.sign` for shared poll signatures, its expiry required: a `Time`, or `:never`.
 * Fields the protos mark required are required keywords. A client used in a forked process - Puma's `preload_app!`, a Sidekiq swarm - starts its own connections and batch threads there. `api_key: nil` means no key; `inspect` hides credentials. `Cent::Pending.resolved` and the public constructors of the partial-failure errors make test doubles.
+* Spec 0.3: a required field is checked for a value before sending - given `nil`, `""`, `0`, `[]` or a message with nothing set, a call raises `InvalidRequestError` naming its path, `limit_strategy.rate_limit.policies[0].rate is required`, where Centrifugo refused it with code 107 - and the required fields of nested messages are required keywords of their classes, `Cent::RateLimitPolicy.new(rate:, interval_ms:)`.
+* Spec 0.3: `device_update`'s `user_update`, `timezone_update`, `locale_update` and `meta_update` are sent whenever given, even empty: `timezone_update: { timezone: "" }` clears the timezone, `user_update: { user: "" }` detaches the devices from their user. Any other message with nothing set is not sent.
+* Spec 0.3: constants for the fields with a fixed set of values - `Cent::PROVIDER_FCM`, `Cent::OP_ADD`, `Cent::FILTER_NODE_OP_AND`, `Cent::Proxy::ENCODING_BINARY` and the rest; the fields stay strings.
+* Spec 0.3: `history_all`, `device_list_all`, `device_topic_list_all`, `user_topic_list_all` and `map_read_state_all` read page after page, with a block or as an `Enumerator`; `position`, a `StreamPosition`, on the results of `publish`, `history`, `map_read_state` and `map_read_stream`.
+* Spec 0.3: `Cent::Token.connection` takes `profile:`, and `Cent::Proxy::ConnectResult` has `profile`: the connection's compression profile (Centrifugo PRO).
+* Before the release: `proto/` is from Centrifugo's master (centrifugal/centrifugo#1308, #1309, #1310), not yet tagged - sync it again from the release tag.
 
 3.0.0
 =====

@@ -2,7 +2,7 @@
 
 cent is the Ruby SDK for Centrifugo's HTTP server API, written to the
 [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
-whose reference implementation is gocent. Applications use it on their hot
+version 0.3, whose reference implementation is gocent. Applications use it on their hot
 paths, from Puma threads, Sidekiq workers and fibers, so it has to be correct
 under concurrency and hard to misuse. Read this before changing code.
 
@@ -139,6 +139,12 @@ creates the GitHub release.
   `broadcast_with_retry` bounds its own waits by its timeout.
 - **`rpc` is not offered**: it calls server API extensions, which Centrifugo
   does not provide.
+- **Required fields are checked on the request's JSON** (`Cent::REQUIRED`,
+  `Wire.check_required`): a field at its zero value is left out of it, so a
+  missing and an empty one fail alike, and only presence wrappers are kept
+  when empty (shape `:presence`).
+- **The `<method>_all` iterators are on the client only**, not on a batch or
+  `Command`: they read a page when the iteration reaches it.
 - **`BoolValue` fields are `true`, `false` or nil.** nil leaves the server's
   setting alone, which `false` cannot say.
 - **An automatic batch always goes to `/api/batch`**, even with one command,

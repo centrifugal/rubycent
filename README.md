@@ -22,7 +22,7 @@ gem "cent", "~> 5.0"   # json is the only dependency
 cent 5 replaces cent 4: see [MIGRATING.md](MIGRATING.md) - an application
 which needs time to move can stay on `gem "cent", "~> 4.0"`. cent implements the
 [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
-version 0.2.
+version 0.3.
 
 ## Example
 
