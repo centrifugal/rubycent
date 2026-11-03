@@ -65,7 +65,7 @@ module Cent
     #   another way - mutual TLS, a proxy - or not at all.
     # @param bearer_token_func [#call, nil] returns the token sent as
     #   "Authorization: Bearer" with each request, for Centrifugo PRO's JWKS
-    #   authentication of the API - an {Token::ApiTokens}'s +method(:token)+,
+    #   authentication of the API - an {Token::ApiTokenSource}'s +method(:token)+,
     #   say. Not together with api_key. An empty token, or one which is not
     #   printable ASCII, fails the call with InvalidConfigError, before
     #   sending; an exception of its own, with FunctionError.

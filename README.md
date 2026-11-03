@@ -479,16 +479,16 @@ token as `Authorization: Bearer`, for Centrifugo PRO's JWKS authentication - it
 is called for every request, so return a cached token. Leave both unset when
 mutual TLS, set up in `http_options`, or a proxy authenticates instead.
 
-To sign the tokens yourself, `Cent::Token::ApiTokens` issues them and reuses
+To sign the tokens yourself, `Cent::Token::ApiTokenSource` issues them and reuses
 each for half its lifetime:
 
 ```ruby
-api_tokens = Cent::Token::ApiTokens.new(
+api_token_source = Cent::Token::ApiTokenSource.new(
   key: api_key,   # its own key - never one of the client tokens
   audience: "centrifugo-api", scope: ["centrifugo:api"]
 )
 client = Cent::Client.new(api_endpoint: "https://centrifugo.example.com/api",
-                          bearer_token_func: api_tokens.method(:token))
+                          bearer_token_func: api_token_source.method(:token))
 ```
 
 Centrifugo PRO accepts a token signed with any key of `http_api.jwks.endpoint`,
@@ -689,7 +689,7 @@ disconnect them with the server API if needed.
 
 Centrifugo PRO's API tokens rotate the same way, from a set of their own at
 `http_api.jwks.endpoint` (see [Authentication](#authentication)).
-`Cent::Token::ApiTokens.new(current_key: -> { ... })` takes the key to sign
+`Cent::Token::ApiTokenSource.new(current_key: -> { ... })` takes the key to sign
 with from a callable, so it can switch to the new key at step 2. Each API token
 is reused for half its `ttl`, so in step 3 wait at least `ttl` after the
 switch.

@@ -12,7 +12,7 @@ Migrating from cent 4: see [MIGRATING.md](MIGRATING.md).
 * Payloads: Ruby values or `JSON::Fragment`, sent as the same JSON value; NaN, binary strings, invalid UTF-8 and values JSON cannot hold refused before sending, naming where they are; a payload from a reply sent back unchanged is the same JSON value.
 * `broadcast_with_retry`, `Cent.exponential_backoff`; automatic batching of concurrent calls (`auto_batch:`); `on_request:` for metrics; `close` waiting for calls in progress.
 * `Cent::Command.publish(...)` and the like for Centrifugo's async consumers; `as_json` gives the payload as a Hash.
-* `Cent::Token`: connection, subscription and Centrifugo PRO server API tokens with every claim (HS256, RS256, ES256/384/512, EdDSA), from Ruby's OpenSSL; JWKS; `ApiTokens`.
+* `Cent::Token`: connection, subscription and Centrifugo PRO server API tokens with every claim (HS256, RS256, ES256/384/512, EdDSA), from Ruby's OpenSSL; JWKS; `ApiTokenSource`.
 * `Cent::Endpoints`: the token and shared poll signature endpoints client SDKs call, and the JWKS endpoint. `Cent::Proxy`: a handler for every proxy type, generated from `proxy.proto`. Each is a Rack app, with a framework-free core.
 * `Cent::SharedPoll.sign` for shared poll signatures, its expiry required: a `Time`, or `:never`.
 * Fields the protos mark required are required keywords. A client used in a forked process - Puma's `preload_app!`, a Sidekiq swarm - starts its own connections and batch threads there. `api_key: nil` means no key; `inspect` hides credentials. `Cent::Pending.resolved` and the public constructors of the partial-failure errors make test doubles.

@@ -177,10 +177,10 @@ class TokenTest < Minitest::Test
     assert_raises(T::Error) { T.api(key, scope: [""], expires_at: EXP) }
   end
 
-  def test_api_tokens_reused_for_half_the_ttl
+  def test_api_token_source_reused_for_half_the_ttl
     keys = [ed.with_key_id("one"), ed.with_key_id("two")]
     current = 0
-    tokens = T::ApiTokens.new(current_key: -> { keys[current] }, audience: "a", ttl: 0.2)
+    tokens = T::ApiTokenSource.new(current_key: -> { keys[current] }, audience: "a", ttl: 0.2)
     first = tokens.token
 
     assert_same first, tokens.token
@@ -193,20 +193,20 @@ class TokenTest < Minitest::Test
     assert_equal [second], Array.new(4) { Thread.new { tokens.token } }.map(&:value).uniq
   end
 
-  def test_api_tokens_refusals
+  def test_api_token_source_refusals
     key = ed.with_key_id("k")
-    assert_raises(T::Error) { T::ApiTokens.new(audience: "a") }
-    assert_raises(T::Error) { T::ApiTokens.new(key:, current_key: -> { key }, audience: "a") }
-    assert_raises(T::Error) { T::ApiTokens.new(key:, audience: "a", expires_at: EXP) }
-    assert_raises(T::Error) { T::ApiTokens.new(key:, audience: "a", ttl: -1) }
-    assert_raises(T::Error) { T::ApiTokens.new(key:, audince: "a") }
-    assert_raises(T::Error) { T::ApiTokens.new(key:).token }
-    # A fixed key is checked when the ApiTokens is made, not on the first call.
-    assert_raises(T::Error) { T::ApiTokens.new(key: T::Key.hmac("secret"), audience: "a") }
+    assert_raises(T::Error) { T::ApiTokenSource.new(audience: "a") }
+    assert_raises(T::Error) { T::ApiTokenSource.new(key:, current_key: -> { key }, audience: "a") }
+    assert_raises(T::Error) { T::ApiTokenSource.new(key:, audience: "a", expires_at: EXP) }
+    assert_raises(T::Error) { T::ApiTokenSource.new(key:, audience: "a", ttl: -1) }
+    assert_raises(T::Error) { T::ApiTokenSource.new(key:, audince: "a") }
+    assert_raises(T::Error) { T::ApiTokenSource.new(key:).token }
+    # A fixed key is checked when the ApiTokenSource is made, not on the first call.
+    assert_raises(T::Error) { T::ApiTokenSource.new(key: T::Key.hmac("secret"), audience: "a") }
   end
 
-  def test_api_tokens_inspect_hides_the_token
-    tokens = T::ApiTokens.new(key: ed.with_key_id("k"), audience: "a")
+  def test_api_token_source_inspect_hides_the_token
+    tokens = T::ApiTokenSource.new(key: ed.with_key_id("k"), audience: "a")
 
     refute_includes tokens.inspect, tokens.token
     assert_includes tokens.inspect, "audience"

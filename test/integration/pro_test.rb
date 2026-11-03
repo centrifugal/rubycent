@@ -152,12 +152,12 @@ class ProTest < IntegrationTest
     pro.device_remove(ids: [id])
   end
 
-  # Tokens from Cent::Token::ApiTokens authenticate API calls to Centrifugo
+  # Tokens from Cent::Token::ApiTokenSource authenticate API calls to Centrifugo
   # PRO, which verifies them with the keys served here, at the endpoint of
   # testdata/centrifugo-pro.compose.yml: port 3101 of the host. Tokens without
   # the audience and scope it requires are refused, as are tokens signed with a
   # key not published.
-  def test_api_tokens
+  def test_api_token_source
     pro
     # The same keys on every run, from fixed seeds: Centrifugo caches keys by
     # ID, so a new key under a known ID would be refused.
@@ -174,7 +174,7 @@ class ProTest < IntegrationTest
       c&.close
     end
 
-    tokens = Cent::Token::ApiTokens.new(key: api_key, audience: "centrifugo-api", scope: ["centrifugo:api"])
+    tokens = Cent::Token::ApiTokenSource.new(key: api_key, audience: "centrifugo-api", scope: ["centrifugo:api"])
     publish.call(tokens.method(:token))
 
     exp = Time.now + 60
@@ -186,7 +186,7 @@ class ProTest < IntegrationTest
     conn = Cent::Token.connection(api_key, user: "42", expires_at: exp)
     assert_raises(Cent::UnauthorizedError) { publish.call(-> { conn }) }
 
-    unpublished = Cent::Token::ApiTokens.new(key: key.call("gocent-unpublished", 2), audience: "centrifugo-api")
+    unpublished = Cent::Token::ApiTokenSource.new(key: key.call("gocent-unpublished", 2), audience: "centrifugo-api")
     assert_raises(Cent::UnauthorizedError) { publish.call(unpublished.method(:token)) }
   end
 

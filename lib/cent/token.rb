@@ -351,7 +351,7 @@ module Cent
     #   configure http_api.jwks.audience and scope to require them. api refuses
     #   claims with neither.
     #
-    # See {ApiTokens} for one to send with every call.
+    # See {ApiTokenSource} for one to send with every call.
     #
     # @param key [Key]
     # @param expires_at [Time] when the token expires: best minutes ahead.
@@ -488,31 +488,34 @@ module Cent
     # it for half its lifetime, so a token sent has at least half of it left.
     # Safe for concurrent use.
     #
-    #   tokens = Cent::Token::ApiTokens.new(key: api_key,   # its own key, not the client tokens'
-    #                                       audience: "centrifugo-api", scope: ["centrifugo:api"])
+    #   source = Cent::Token::ApiTokenSource.new(key: api_key,   # its own key, not the client tokens'
+    #                                            audience: "centrifugo-api", scope: ["centrifugo:api"])
     #   client = Cent::Client.new(api_endpoint: "https://centrifugo.example.com/api",
-    #                             bearer_token_func: tokens.method(:token))
+    #                             bearer_token_func: source.method(:token))
     #
     # +current_key+, when set, returns the key to sign each new token with
     # instead of +key+ - the key active now, when keys rotate. A key must be
     # published in the JWKS before it signs: Centrifugo PRO refuses a token
     # whose key it can't find. The tokens are issued when needed and expire
     # +ttl+ seconds later (300 by default).
-    class ApiTokens
+    class ApiTokenSource
       # @param key [Key, nil]
       # @param current_key [#call, nil]
       # @param ttl [Numeric] seconds
       # @param claims the claims of {Token.api} but expires_at and issued_at
       # @raise [Error]
       def initialize(key: nil, current_key: nil, ttl: 300, **claims)
-        raise Error, "ApiTokens takes key or current_key, one of them" if key.nil? == current_key.nil?
+        raise Error, "ApiTokenSource takes key or current_key, one of them" if key.nil? == current_key.nil?
         if claims.key?(:expires_at) || claims.key?(:issued_at)
-          raise Error, "ApiTokens sets expires_at and issued_at itself: leave them unset, and set ttl"
+          raise Error, "ApiTokenSource sets expires_at and issued_at itself: leave them unset, and set ttl"
         end
-        raise Error, "ApiTokens ttl must be a positive number of seconds" unless ttl.is_a?(Numeric) && ttl.positive?
+        unless ttl.is_a?(Numeric) && ttl.positive?
+          raise Error,
+                "ApiTokenSource ttl must be a positive number of seconds"
+        end
 
         unknown = claims.keys - %i[audience scope issuer subject id]
-        raise Error, "ApiTokens: unknown claim #{unknown.first}" unless unknown.empty?
+        raise Error, "ApiTokenSource: unknown claim #{unknown.first}" unless unknown.empty?
 
         @key = key
         @current_key = current_key
