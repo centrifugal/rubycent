@@ -146,12 +146,23 @@ class PagesTest < Minitest::Test
     @fake.on("history", { "publications" => [], "offset" => 9, "epoch" => "h" })
     @fake.on("map_read_state", { "offset" => 3, "epoch" => "s" })
     @fake.on("map_read_stream", { "offset" => 4, "epoch" => "r" })
+    @fake.on("map_publish", { "offset" => 5, "epoch" => "p" })
+    @fake.on("map_remove", { "offset" => 6, "epoch" => "d" })
     pos = @client.publish(channel: "c", data: 1).position
 
     assert_equal Cent::StreamPosition.new(offset: 1, epoch: "e1"), pos
     assert_equal Cent::StreamPosition.new(offset: 9, epoch: "h"), @client.history(channel: "c").position
     assert_equal Cent::StreamPosition.new(offset: 3, epoch: "s"), @client.map_read_state(channel: "m").position
     assert_equal Cent::StreamPosition.new(offset: 4, epoch: "r"), @client.map_read_stream(channel: "m").position
+    assert_equal Cent::StreamPosition.new(offset: 5, epoch: "p"),
+                 @client.map_publish(channel: "m", key: "k", data: 1).position
+    assert_equal Cent::StreamPosition.new(offset: 6, epoch: "d"), @client.map_remove(channel: "m", key: "k").position
+    # Every result holding offset and epoch has one.
+    with = APIProto::SCHEMA.messages.select { |m| (%w[offset epoch] - m.fields.map(&:name)).empty? }.map(&:name)
+
+    assert_equal %w[PublishResult StreamPosition HistoryResult MapPublishResult MapRemoveResult MapReadStateResult
+                    MapReadStreamResult], with
+    (with - %w[StreamPosition]).each { assert_includes Cent.const_get(it).instance_methods, :position, it }
     # What a publish returned is what the next history call reads from.
     @client.history(channel: "c", since: pos, limit: 10)
 

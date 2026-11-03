@@ -199,8 +199,8 @@ one's revision, so that a map reset between pages raises
 then. Items changed while iterating - a device registered meanwhile - may or
 may not be seen.
 
-The results of `publish`, `history`, `map_read_state` and `map_read_stream`
-give their offset and epoch as a `Cent::StreamPosition`: what came after a
+The results of `publish`, `history`, `map_publish`, `map_remove`,
+`map_read_state` and `map_read_stream` give their offset and epoch as a `Cent::StreamPosition`: what came after a
 publication is
 
 ```ruby

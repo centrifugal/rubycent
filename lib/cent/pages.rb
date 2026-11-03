@@ -27,6 +27,20 @@ module Cent
     def position = StreamPosition.new(offset:, epoch:)
   end
 
+  # The map channel's stream position after the publication.
+  class MapPublishResult
+    # @return [StreamPosition] the publication's offset in the map's stream and
+    #   the stream's epoch
+    def position = StreamPosition.new(offset:, epoch:)
+  end
+
+  # The map channel's stream position after the removal.
+  class MapRemoveResult
+    # @return [StreamPosition] the removal's offset in the map's stream and the
+    #   stream's epoch
+    def position = StreamPosition.new(offset:, epoch:)
+  end
+
   # The <method>_all iterators of Client (spec 3.8): paging written once over
   # the cursor, and once for history.
   #

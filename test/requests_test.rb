@@ -74,6 +74,20 @@ class RequestsTest < Minitest::Test
     assert_raises(ArgumentError) { Cent::RateLimitPolicy.new(rate: 1) }
   end
 
+  # A payload's JSON null is a value (spec 3.4): a required payload set to it is
+  # sent; nil is unset.
+  def test_a_required_payload_of_json_null_is_a_value
+    @client.send_push_notification(recipient: PUSH[:recipient],
+                                   notification: { webpush: { payload: JSON::Fragment.new("null") } })
+
+    assert_equal({ "webpush" => { "payload" => nil } }, @fake.bodies.last["notification"])
+    err = assert_raises(Cent::InvalidRequestError) do
+      @client.send_push_notification(recipient: PUSH[:recipient],
+                                     notification: { webpush: { payload: nil, headers: { "a" => "b" } } })
+    end
+    assert_includes err.message, "notification.webpush.payload is required"
+  end
+
   def test_an_optional_message_left_unset_is_not_checked
     @client.send_push_notification(**PUSH)
     @client.device_update(users: ["u"])

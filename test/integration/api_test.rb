@@ -131,10 +131,12 @@ class ApiTest < IntegrationTest
   def test_map_read_state_all
     ch = "map:#{unique}"
     keys = Array.new(5) { "k#{it}" }
-    keys.each { client.map_publish(channel: ch, key: it, data: {}) }
+    last = keys.map { client.map_publish(channel: ch, key: it, data: {}).position }.last
 
     assert_equal keys, client.map_read_state_all(channel: ch, limit: 2).map(&:key).sort
     state = client.map_read_state(channel: ch, limit: 1)
+
+    assert_equal last, state.position
     stream = client.map_read_stream(channel: ch, since_offset: state.position.offset, since_epoch: state.position.epoch)
 
     assert_equal state.position, stream.position
