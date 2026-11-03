@@ -34,6 +34,80 @@ module Proto
     !sep.empty? && (after.include?('""') || after.match?(/\bempty\b/i))
   end
 
+  # The values a field's comment lists in the sentence "One of: add, remove,
+  # set.", the protos' convention for a string field with a fixed set of
+  # values; nil without one. A malformed one fails the generation rather than
+  # being skipped.
+  def self.listed_values(field)
+    _, sep, after = field.doc.join(" ").partition("One of:")
+    return nil if sep.empty?
+
+    list, dot, = after.partition(".")
+    raise Error, 'the values after "One of:" must end with a period' if dot.empty?
+
+    list.split(",").map(&:strip).each_with_object([]) do |v, values|
+      unless v.match?(/\A[a-z][a-z0-9_]*\z/)
+        raise Error, "#{v.inspect} is not a value: lowercase letters, digits and underscores"
+      end
+      raise Error, "value #{v.inspect} listed twice" if values.include?(v)
+
+      values << v
+    end
+  end
+
+  # The constants of a string field with listed values: the values listed, the
+  # messages whose field of that name lists exactly them, and the message
+  # naming them when the field's name alone would be ambiguous.
+  ConstGroup = Struct.new(:field, :listed, :messages, :prefix, keyword_init: true) do
+    # The constant for one of the values, as Ruby spells it: OP_ADD for op's
+    # "add", FILTER_NODE_OP_AND with the prefix FilterNode.
+    def const_name(value)
+      [prefix && Proto.snake(prefix), field, value].compact.join("_").upcase
+    end
+  end
+
+  def self.snake(camel) = camel.gsub(/([a-z\d])([A-Z])/, '\1_\2').gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').downcase
+
+  # The fields of +messages+ with listed values, grouped, in the order of the
+  # proto. Where fields of one name list different values in different
+  # messages, the set listed in the most messages keeps the short name and the
+  # others are named by their message too - OP_ADD for the topic updates,
+  # FILTER_NODE_OP_AND for FilterNode - and a tie names all of them so.
+  def self.const_groups(messages)
+    by_field = {}
+    messages.each do |m|
+      m.fields.each do |f|
+        values = begin
+          listed_values(f)
+        rescue Error => e
+          raise Error, "#{m.name}.#{f.name}: #{e.message}"
+        end
+        next if values.nil?
+
+        groups = (by_field[f.name] ||= [])
+        g = groups.find { it.listed == values }
+        groups << (g = ConstGroup.new(field: f.name, listed: values, messages: [])) if g.nil?
+        g.messages << m.name
+      end
+    end
+    by_field.flat_map do |name, groups|
+      if groups.size > 1
+        most = groups.max_by { it.messages.size }
+        tie = groups.any? { it != most && it.messages.size == most.messages.size }
+        groups.each do |g|
+          next if g == most && !tie
+          if g.messages.size > 1
+            raise Error, "field #{name} lists #{g.listed.join(", ")} in #{g.messages.join(", ")} " \
+                         "and other values elsewhere: cannot name its constants"
+          end
+
+          g.prefix = g.messages.first
+        end
+      end
+      groups
+    end
+  end
+
   # A presence wrapper: a message with one field which Centrifugo reads by
   # whether it is there - BoolValue and Int32Value, whose field is value, and
   # one whose only field's empty value has a meaning, as the update messages

@@ -305,6 +305,37 @@ def emit_required(out, s, cmds)
   out << "\n  }.freeze\n\n"
 end
 
+# A constant per value of each string field whose comment lists its values,
+# "One of: ...". The fields stay strings: a value Centrifugo adds is sendable
+# before the SDK names it.
+def emit_consts(out, messages, indent, proto)
+  groups = begin
+    Proto.const_groups(messages)
+  rescue Proto::Error => e
+    abort "#{proto}: #{e.message}"
+  end
+  groups.each do |g|
+    owners = g.messages.size > 1 ? "#{g.messages[0...-1].join(", ")} and #{g.messages.last}" : g.messages.first
+    out << "\n"
+    out << comment(wrap("The values of the #{g.field} field of #{owners}. The field is a String: a value " \
+                        "Centrifugo sends or accepts which these do not name is still a valid one.", 76), indent)
+    g.listed.each do |v|
+      out << "\n#{indent}# The #{"#{g.prefix} " if g.prefix}#{g.field} #{v.inspect}.\n"
+      out << "#{indent}#{g.const_name(v)} = #{v.inspect}\n"
+    end
+  end
+end
+
+# Words in lines of at most +width+ characters.
+def wrap(text, width)
+  text.split.each_with_object([+""]) do |word, lines|
+    if lines.last.empty? then lines.last << word
+    elsif lines.last.size + word.size + 1 > width then lines << word.dup
+    else lines.last << " " << word
+    end
+  end
+end
+
 def emit_requests(out, cmds)
   out << "  # The JSON of each API method's request, from its fields, as the methods of\n"
   out << "  # Client, Batch and Command take them.\n  #\n  # @api private\n"
@@ -553,6 +584,8 @@ def generate
     types << "\n" unless i.zero?
     emit_message(types, m, "  ", "server API")
   end
+  requests = cmds.map { it.request.name }
+  emit_consts(types, api.messages.select { !skip.include?(it.name) || requests.include?(it.name) }, "  ", "api.proto")
   types << "end\n"
 
   methods = +format(HEADER, "api.proto")
@@ -577,6 +610,7 @@ def generate
     proxy_types << "\n" unless i.zero?
     emit_message(proxy_types, m, "    ", "proxy protocol")
   end
+  emit_consts(proxy_types, proxy_messages(proxy), "    ", "proxy.proto")
   proxy_types << "  end\nend\n"
 
   { "types.rb" => types, "methods.rb" => methods, "proxy_types.rb" => proxy_types }

@@ -2729,4 +2729,120 @@ module Cent
       new
     end
   end
+
+  # The values of the op field of FilterNode. The field is a String: a value
+  # Centrifugo sends or accepts which these do not name is still a valid one.
+
+  # The FilterNode op "and".
+  FILTER_NODE_OP_AND = "and"
+
+  # The FilterNode op "or".
+  FILTER_NODE_OP_OR = "or"
+
+  # The FilterNode op "not".
+  FILTER_NODE_OP_NOT = "not"
+
+  # The values of the op field of DeviceTopicsUpdate, DeviceTopicUpdateRequest
+  # and UserTopicUpdateRequest. The field is a String: a value Centrifugo sends
+  # or accepts which these do not name is still a valid one.
+
+  # The op "add".
+  OP_ADD = "add"
+
+  # The op "remove".
+  OP_REMOVE = "remove"
+
+  # The op "set".
+  OP_SET = "set"
+
+  # The values of the cmp field of FilterNode. The field is a String: a value
+  # Centrifugo sends or accepts which these do not name is still a valid one.
+
+  # The cmp "eq".
+  CMP_EQ = "eq"
+
+  # The cmp "neq".
+  CMP_NEQ = "neq"
+
+  # The cmp "in".
+  CMP_IN = "in"
+
+  # The cmp "nin".
+  CMP_NIN = "nin"
+
+  # The cmp "ex".
+  CMP_EX = "ex"
+
+  # The cmp "nex".
+  CMP_NEX = "nex"
+
+  # The cmp "sw".
+  CMP_SW = "sw"
+
+  # The cmp "ew".
+  CMP_EW = "ew"
+
+  # The cmp "ct".
+  CMP_CT = "ct"
+
+  # The cmp "gt".
+  CMP_GT = "gt"
+
+  # The cmp "gte".
+  CMP_GTE = "gte"
+
+  # The cmp "lt".
+  CMP_LT = "lt"
+
+  # The cmp "lte".
+  CMP_LTE = "lte"
+
+  # The values of the provider field of DeviceRegisterRequest. The field is a
+  # String: a value Centrifugo sends or accepts which these do not name is still
+  # a valid one.
+
+  # The provider "fcm".
+  PROVIDER_FCM = "fcm"
+
+  # The provider "hms".
+  PROVIDER_HMS = "hms"
+
+  # The provider "apns".
+  PROVIDER_APNS = "apns"
+
+  # The provider "webpush".
+  PROVIDER_WEBPUSH = "webpush"
+
+  # The values of the platform field of DeviceRegisterRequest. The field is a
+  # String: a value Centrifugo sends or accepts which these do not name is still
+  # a valid one.
+
+  # The platform "ios".
+  PLATFORM_IOS = "ios"
+
+  # The platform "android".
+  PLATFORM_ANDROID = "android"
+
+  # The platform "web".
+  PLATFORM_WEB = "web"
+
+  # The values of the status field of UpdatePushStatusRequest. The field is a
+  # String: a value Centrifugo sends or accepts which these do not name is still
+  # a valid one.
+
+  # The status "delivered".
+  STATUS_DELIVERED = "delivered"
+
+  # The status "interacted".
+  STATUS_INTERACTED = "interacted"
+
+  # The values of the key_mode field of MapPublishRequest. The field is a
+  # String: a value Centrifugo sends or accepts which these do not name is still
+  # a valid one.
+
+  # The key_mode "if_new".
+  KEY_MODE_IF_NEW = "if_new"
+
+  # The key_mode "if_exists".
+  KEY_MODE_IF_EXISTS = "if_exists"
 end

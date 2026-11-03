@@ -51,6 +51,12 @@ nothing set - but for the updates of `device_update`, sent whenever given:
 `timezone_update: { timezone: "" }` clears the timezone, and leaving
 `timezone_update` out changes nothing.
 
+A field with a fixed set of values has a constant per value, named by the
+field and the value: `provider: Cent::PROVIDER_FCM`, `op: Cent::OP_ADD`,
+`Cent::FILTER_NODE_OP_AND` for `FilterNode`'s `op`, and in a proxy handler
+`req.encoding == Cent::Proxy::ENCODING_BINARY`. The fields stay strings: a
+value Centrifugo adds can be sent before cent names it.
+
 Create the client once and share it - a constant, an initializer: it is safe
 for concurrent use from threads, and keeps its connections to Centrifugo alive
 between calls. Under a fiber scheduler - Async, Falcon - calls wait without

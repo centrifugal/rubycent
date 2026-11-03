@@ -84,7 +84,7 @@ class RequestsTest < Minitest::Test
 
   def test_a_field_whose_empty_value_has_a_meaning_is_sent_empty
     @client.invalidate_user_tokens(user: "")
-    @client.user_topic_update(user: "", op: "add", topics: ["news"])
+    @client.user_topic_update(user: "", op: Cent::OP_ADD, topics: ["news"])
 
     assert_equal [{}, { "op" => "add", "topics" => ["news"] }], @fake.requests.map(&:json)
   end
