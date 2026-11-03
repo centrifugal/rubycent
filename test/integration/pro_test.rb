@@ -84,6 +84,51 @@ class ProTest < IntegrationTest
     assert_empty pro.device_list(filter: by_user).items
   end
 
+  # Devices read page by page, pushes with a rate limit and with a time limit
+  # - each setting what the API requires, so that a check stricter than
+  # Centrifugo's fails - and empty updates, which clear: before spec 0.3, cent
+  # dropped them.
+  def test_push_parts
+    user = unique
+    ids = Array.new(3) do
+      pro.device_register(provider: Cent::PROVIDER_WEBPUSH, platform: Cent::PLATFORM_WEB, token: webpush_token,
+                          user:).id
+    end
+    by_user = { users: [user] }
+
+    assert_equal ids.sort, pro.device_list_all(filter: by_user, limit: 2).map(&:id).sort
+    [
+      { rate_limit: { key: "device.id", policies: [{ rate: 1, interval_ms: 60_000 }] } },
+      { time_limit: Cent::PushTimeLimitStrategy.new(send_after_time: "09:00:00", send_before_time: "21:00:00",
+                                                    no_tz_send_now: true) }
+    ].each do |strategy|
+      push = pro.send_push_notification(
+        recipient: { filter: by_user },
+        # Centrifugo needs expire_at with a limit strategy: a push the limit
+        # holds back must not wait forever.
+        notification: { webpush: { payload: { "title" => "hi" } }, expire_at: Time.now.to_i + 7200 },
+        limit_strategy: strategy,
+        send_at: Time.now.to_i + 3600
+      )
+
+      refute_empty push.uid
+      pro.cancel_push(uid: push.uid)
+    end
+
+    one = { ids: ids.first(1) }
+    pro.device_update(**one, timezone_update: { timezone: "Europe/Berlin" })
+
+    assert_equal "Europe/Berlin", pro.device_list(filter: one).items.first.timezone
+    pro.device_update(**one, timezone_update: { timezone: "" })
+
+    assert_equal "", pro.device_list(filter: one).items.first.timezone
+    pro.device_update(**one, user_update: Cent::DeviceUserUpdate.new(user: ""))
+
+    assert_equal "", pro.device_list(filter: one).items.first.user
+  ensure
+    pro.device_remove(ids:) if ids
+  end
+
   def test_pro_batch
     user = unique
     b = pro.new_batch

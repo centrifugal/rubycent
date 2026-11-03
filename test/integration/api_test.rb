@@ -113,6 +113,37 @@ class ApiTest < IntegrationTest
     client.map_clear(channel: ch)
   end
 
+  # Every publication read page by page, and what came after a publication
+  # read from its position.
+  def test_history_all_and_positions
+    ch = unique
+    positions = Array.new(5) { client.publish(channel: ch, data: { n: it }).position }
+
+    assert_equal((0...5).to_a, client.history_all(channel: ch, limit: 2).map { it.data["n"] })
+    assert_equal([3, 4], client.history(channel: ch, since: positions[2], limit: 10).publications.map { it.data["n"] })
+    assert_equal positions.last, client.history(channel: ch).position
+    stale = Cent::StreamPosition.new(offset: 1, epoch: "gone")
+    assert_raises(Cent::UnrecoverablePositionError) { client.history(channel: ch, since: stale, limit: 10) }
+  end
+
+  # A map state read page by page: every page after the first carries the
+  # first one's revision, which Centrifugo accepts with a cursor.
+  def test_map_read_state_all
+    ch = "map:#{unique}"
+    keys = Array.new(5) { "k#{it}" }
+    keys.each { client.map_publish(channel: ch, key: it, data: {}) }
+
+    assert_equal keys, client.map_read_state_all(channel: ch, limit: 2).map(&:key).sort
+    state = client.map_read_state(channel: ch, limit: 1)
+    stream = client.map_read_stream(channel: ch, since_offset: state.position.offset, since_epoch: state.position.epoch)
+
+    assert_equal state.position, stream.position
+    # A revision from another epoch fails: the state was reset since.
+    assert_raises(Cent::UnrecoverablePositionError) do
+      client.map_read_state_all(channel: ch, limit: 2, revision_offset: 1, revision_epoch: "gone").first
+    end
+  end
+
   def test_shared_poll_publish
     client.shared_poll_publish(channel: "poll:#{unique}", key: "k", version: 1, data: { v: 1 })
   end
