@@ -100,6 +100,11 @@ internals are marked `@api private`, which `.yardopts` hides.
 
 ## Releasing
 
+Before releasing 5.0.0: `proto/` is from Centrifugo's master
+(centrifugal/centrifugo#1308, #1309, #1310), not yet tagged - sync it again
+from the release tag (`CENTRIFUGO_REF=vX.Y.Z bundle exec rake proto:sync`) and
+run the checks and integration tests.
+
 Set `Cent::VERSION` in `lib/cent/version.rb`, add the CHANGELOG entry, and push
 a tag `vX.Y.Z`: `release.yml` checks the tag against the version, runs the
 tests, pushes the gem to RubyGems with the `RUBYGEMS_API_KEY` secret and

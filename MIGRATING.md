@@ -1,7 +1,8 @@
 # Migrating from cent 4 to cent 5
 
 cent 5 is a rewrite, to the
-[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md).
+[Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
+version 0.3.
 It needs Ruby 3.4 or newer and Centrifugo v6, and depends on nothing but the
 json gem: Faraday and the jwt gem are gone. An application which needs time to
 move can stay on `gem "cent", "~> 4.0"`, which keeps working.
@@ -17,9 +18,13 @@ What changes:
   `Cent::ResponseError`. **Broadcasts and batches raise** when parts of them
   failed: see [below](#broadcasts-and-batches-now-raise).
 - **The client** takes `api_endpoint:`, which is required, and
-  `request_timeout:`; each call takes `timeout:`, which bounds the whole
-  request. The Faraday block is gone: TLS settings go in `http_options:`,
-  another HTTP library in `http_client:`.
+  `request_timeout:`, which bounds every call whole; a call's `timeout:`
+  replaces it. The Faraday block is gone: TLS settings go in `http_options:`,
+  extra headers in `headers:`, another HTTP library in `http_client:`.
+- **Requests are checked before sending**: a missing or empty required field,
+  a publication without data, a payload which is not JSON raise
+  `Cent::InvalidRequestError` instead of reaching Centrifugo: see
+  [below](#other-changes-you-may-notice).
 - **Tokens** are made with `Cent::Token.connection` and
   `Cent::Token.subscription`, with every claim Centrifugo reads, and HMAC, RSA,
   ECDSA or Ed25519 keys. An expiry is required: `:never` for a token accepted
@@ -58,6 +63,63 @@ rescue Cent::BroadcastFailedChannelsError => e
   e.failed.each { logger.warn("broadcast to #{it.channel} failed: #{it.error.message}") }
 end
 ```
+
+## Other changes you may notice
+
+**Timeouts bound the whole call.** cent 4's `timeout:` set Faraday's open and
+read timeouts, each operation's own, so a reply arriving slowly could take
+longer. cent 5's `request_timeout:` - 10 seconds by default - bounds every
+call whole, a reply's headers trickling in included, and raises
+`Cent::TimeoutError` at it. A call's `timeout:` replaces it, longer or shorter;
+zero is refused, so a call cannot be left unbounded:
+
+```ruby
+# cent 4
+client = Cent::Client.new(api_key: "k", endpoint: "http://localhost:8000/api", timeout: 5)
+# cent 5
+client = Cent::Client.new(api_endpoint: "http://localhost:8000/api", api_key: "k", request_timeout: 5)
+client.history(channel: "news", limit: 1000, timeout: 30)   # this call may take longer
+```
+
+**Wrong requests fail before sending.** cent 4 sent what it was given, and
+Centrifugo answered with an error - `Cent::ResponseError`, code 107 or 102.
+cent 5 raises `Cent::InvalidRequestError` without sending: a field the protos
+mark required left out or empty (`channel: ""`), a publication without `data`
+or `b64data`, a payload which is not JSON (NaN, a `Time`, a binary string). It
+is not retryable: fix the call.
+
+```ruby
+# cent 4: sent; Centrifugo refused it with Cent::ResponseError
+client.publish(channel: "", data: { text: "hi" })
+# cent 5: not sent
+client.publish(channel: "", data: { text: "hi" })   # raises Cent::InvalidRequestError: channel is required
+```
+
+**nil is no value.** A keyword given nil is not sent, as in cent 4 - so
+`publish(data: nil)` now raises `InvalidRequestError`. To publish JSON null,
+pass `data: JSON::Fragment.new("null")`. A nested message with nothing set is
+left out too: `since: {}` is not sent.
+
+**Nested messages take Symbols.** `since: { "offset" => 5 }` is refused,
+naming the fix: write `since: { offset: 5, epoch: "x" }`, or
+`Cent::StreamPosition.new(offset: 5, epoch: "x")`. A position also comes from
+a result: `client.publish(...).position`.
+
+**The endpoint has no default.** cent 4 used `http://localhost:8000/api` when
+`endpoint:` was left out; cent 5 requires `api_endpoint:`, and refuses one
+with a query, credentials or a method name at the end (`/api/publish`), with
+`Cent::InvalidConfigError`. `api_key:` is optional: nil when requests are
+authenticated another way.
+
+**Headers go in `headers:`.** Without the Faraday block, extra headers - a
+`User-Agent` of your own, which replaces cent's, a header a proxy needs - go in
+`headers: { "User-Agent" => "my-app/1.0" }`. `X-API-Key`, `Authorization` and
+`Content-Type` are refused there: use `api_key:` or `bearer_token_func:`.
+
+**HMAC tokens are HS256.** `Cent::Notary.new(secret:, algorithm: "HS512")` has
+no counterpart: `Cent::Token::Key.hmac(secret)` signs HS256, which every
+Centrifugo verifies. RSA, ECDSA and Ed25519 keys are `Key.rsa`, `Key.ecdsa`,
+`Key.ed25519`, or `Key.from_pem`.
 
 ## Side by side
 
@@ -221,8 +283,10 @@ puts JSON.parse(token.split(".")[1].unpack1("m")).slice("sub", "exp", "channel")
 
 | cent 4 | cent 5 |
 |---|---|
-| `Cent::Client.new(api_key:, endpoint:, timeout:)` | `Cent::Client.new(api_endpoint:, api_key:, request_timeout:)`; `api_endpoint` is required, without a default |
-| the Faraday block: `conn.options...`, `conn.adapter` | `http_options: { ca_file:, cert:, key:, ... }`, or `http_client:` for another HTTP library; `timeout:` on a call bounds it whole |
+| `Cent::Client.new(api_key:, endpoint:, timeout:)` | `Cent::Client.new(api_endpoint:, api_key:, request_timeout:)`; `api_endpoint` is required, without a default; `request_timeout` bounds every call whole |
+| the Faraday block: `conn.options...`, `conn.adapter` | `http_options: { ca_file:, cert:, key:, ... }`, or `http_client:` for another HTTP library; `timeout:` on a call replaces `request_timeout` for it |
+| `conn.headers["User-Agent"] = ...` | `headers: { "User-Agent" => ... }` |
+| `Cent::ResponseError` for a request Centrifugo refused as invalid (code 107) | often `Cent::InvalidRequestError`, raised before sending |
 | `publish(channel:, data:, ...)` and the other methods | the same names and keywords, every field of the request; a result object instead of the response Hash |
 | `history(..., since: { "offset" => 5, "epoch" => "x" })` | `since: { offset: 5, epoch: "x" }`, or `Cent::StreamPosition.new(...)`: field names are Symbols |
 | `disconnect(whitelist:)` | gone from Centrifugo v6 |
