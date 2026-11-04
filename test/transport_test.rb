@@ -108,8 +108,11 @@ class TransportTest < Minitest::Test
       sleep 0.02
       ok(sock)
     end
+    # Deadlines from well before the reply to well after it, so that both
+    # outcomes happen however coarse the platform's timers are: Windows
+    # sleeps in steps of about 15 ms, turning the server's 20 ms into ~31.
     outcomes = Array.new(200) do
-      @client.info(timeout: 0.015 + (rand * 0.01))
+      @client.info(timeout: 0.005 + (rand * 0.075))
       :ok
     rescue Cent::TimeoutError
       :timeout
