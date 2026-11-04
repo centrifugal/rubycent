@@ -3,6 +3,8 @@ v5.0.0
 
 cent 5 is a rewrite, to the [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md), version 0.3, which gocent and the other Centrifugo server SDKs follow too. It needs Ruby 3.4 or newer and supports Centrifugo v6 - OSS and PRO; the map and shared poll methods need v6.8.0 or newer, `ApiError#temporary?` v6.10.0 or newer. The json gem is its only dependency: Faraday and jwt are gone. Migrating from cent 4: see [MIGRATING.md](https://github.com/centrifugal/rubycent/blob/master/MIGRATING.md); an application which needs time to move can stay on `gem "cent", "~> 4.0"`.
 
+Generated from Centrifugo's protos at [e21aeb50](https://github.com/centrifugal/centrifugo/commit/e21aeb50ab6fc4d525fc817473574f728da6c3ad) on its master, after v6.10.2: the same messages as v6.10.2, with the comments the constants are generated from, and `ConnectResult.profile` for the connect proxy, which Centrifugo PRO newer than v6.10.2 reads.
+
 **Client and calls**
 
 * A method for every API method, generated from Centrifugo's `api.proto` with its documentation - the map, shared poll and Centrifugo PRO methods included - taking its request's fields as keyword arguments: `client.publish(channel: "news", data: ...)`. A nested message is its class or a Hash of its fields; an unknown keyword or field is refused, with a suggestion.

@@ -10,7 +10,7 @@ under concurrency and hard to misuse. Read this before changing code.
 
 | Path | What |
 |---|---|
-| `proto/api.proto`, `proto/proxy.proto` | Copies of Centrifugo's protos, from a released tag (`CENTRIFUGO_REF=v6.10.2 bundle exec rake proto:sync`) |
+| `proto/api.proto`, `proto/proxy.proto` | Copies of Centrifugo's protos (`CENTRIFUGO_REF=vX.Y.Z bundle exec rake proto:sync`): a released tag, or a commit of master named in the changelog |
 | `gen/required_fields.txt` | The fields the protos mark "Required.", made required keywords - of the methods and of the message types - and checked for a value before sending. Generation fails when the protos' list differs: a newly required field breaks every call without it, so review the change - fix the proto upstream if Centrifugo accepts the field absent - then `ruby gen/generate.rb --accept-required` |
 | `gen/constants_api.txt`, `gen/constants_proxy.txt` | The names of the constants of the fields with a "One of:" sentence, as the spec's table of 3.3 pins them. Generation fails on a field they lack, a pin no field uses, and one name over different values: name a new field here as the spec does |
 | `gen/` | The generator: `proto.rb` parses the protos, `generate.rb` writes `lib/cent/generated/` |
@@ -90,7 +90,7 @@ internals are marked `@api private`, which `.yardopts` hides.
 
 ## Updating to a new Centrifugo API
 
-1. `CENTRIFUGO_REF=vX.Y.Z bundle exec rake proto:sync` - always a released tag.
+1. `CENTRIFUGO_REF=vX.Y.Z bundle exec rake proto:sync` - a released tag, or, when a release needs changes no tag has yet, a commit of Centrifugo's master, which the release's changelog entry names (spec section 2).
 2. Read the diff of `proto/`: a removed field is a breaking change.
 3. `bundle exec rake check`, then the integration tests against the new
    release.
