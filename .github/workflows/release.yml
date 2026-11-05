@@ -1,37 +1,38 @@
-name: Release Ruby Gem
+name: Release to RubyGems
+
+# Pushing a tag v5.1.0 releases the gem: the tag must match Cent::VERSION.
 
 on:
   push:
     tags:
-      - 'v[0-9].[0-9]+.[0-9]+'
+      - "v*"
+
+permissions:
+  contents: write
+
 jobs:
-  build-and-release:
-    name: Release
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
-
-      - name: Bundle install
+          ruby-version: "4.0"
+          bundler-cache: true
+      - name: The tag is the version
         run: |
-          bundle install
-
+          version=$(ruby -Ilib -rcent/version -e 'print Cent::VERSION')
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match Cent::VERSION ${version}: set it in lib/cent/version.rb"
+            exit 1
+          fi
+      - run: bundle exec rake generate:check test
+      - run: gem build cent.gemspec
       - name: Publish to RubyGems
-        run: |
-          mkdir -p $HOME/.gem
-          touch $HOME/.gem/credentials
-          chmod 0600 $HOME/.gem/credentials
-          printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-          gem build *.gemspec
-          gem push *.gem
+        run: gem push cent-*.gem
         env:
-          GEM_HOST_API_KEY: "${{secrets.RUBYGEMS_API_KEY}}"
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+      - name: GitHub release
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "See [CHANGELOG.md](https://github.com/centrifugal/rubycent/blob/master/CHANGELOG.md)." cent-*.gem
+        env:
+          GH_TOKEN: ${{ github.token }}
