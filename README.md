@@ -22,7 +22,7 @@ gem "cent", "~> 5.0"   # json is the only dependency
 cent 5 replaces cent 4: see [MIGRATING.md](MIGRATING.md) - an application
 which needs time to move can stay on `gem "cent", "~> 4.0"`. cent implements the
 [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
-version 0.3.
+version 0.4.
 
 ## Example
 
@@ -538,7 +538,9 @@ outcome.
 progress, automatic batches included, so that what was accepted is sent before
 the process exits - from `at_exit`, Puma's `on_worker_shutdown` or Sidekiq's
 `on(:shutdown)`. With `timeout:` it raises `Cent::TimeoutError` when calls are
-still in progress then.
+still in progress then, and they go on. It may be called again, concurrently
+too: each call waits the same way. A `broadcast_with_retry` stops at its next
+attempt, which raises `ClosedError`.
 
 ## HTTP handlers
 
@@ -604,14 +606,27 @@ a subscribe, publish, RPC, map publish or map remove as sent, as refusing a
 connect unless anonymous connections are allowed, and as an expired refresh or
 sub refresh. A block calling a method,
 as here, keeps the logic where it can `return` early and be tested alone; see
-[Rails](#rails) for where each part goes there. Keep proxy endpoints reachable by Centrifugo only:
-whoever can call them can claim to be any user.
+[Rails](#rails) for where each part goes there.
+
+Keep proxy endpoints reachable by Centrifugo only: whoever can call them can
+claim to be any user. The ways to do it:
+
+- Serve them on a network only Centrifugo reaches, not the one your public
+  routes are on.
+- Have Centrifugo add a secret header to every proxy request, with the proxy's
+  `static_headers` option, and check it in your application before the
+  handler - a Rack middleware or a route constraint - answering 403 without it.
+- Use TLS where the traffic leaves a trusted network.
+
+A handler's own share of the protection is its bound on a request's body,
+`max_body:` (16 MiB by default), and the deadline it passes on.
 
 ## Tokens
 
 `Cent::Token` issues the JWTs Centrifugo authenticates clients with -
 connection and subscription tokens, with Centrifugo's claims, signed with
-HMAC, RSA, ECDSA or Ed25519 from Ruby's OpenSSL - and `Cent::Endpoints` serves
+HMAC, RSA (2048 bits or more), ECDSA (P-256, P-384, P-521) or Ed25519 from
+Ruby's OpenSSL - and `Cent::Endpoints` serves
 the endpoints the `getToken` callbacks of client SDKs call, in a Rack app or
 Sinatra (in Rails, a controller action: see [Rails](#rails)):
 

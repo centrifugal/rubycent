@@ -19,6 +19,10 @@ module Cent
     }.freeze
     private_constant :EC_ALGS
 
+    # The smallest RSA key signing tokens.
+    MIN_RSA_BITS = 2048
+    private_constant :MIN_RSA_BITS
+
     # The error of a token or key which cannot be made: the message says why.
     class Error < Cent::Error; end
 
@@ -75,15 +79,18 @@ module Cent
       end
 
       # A key signing with RS256, whose public key is Centrifugo's
-      # client.token.rsa_public_key.
+      # client.token.rsa_public_key. A key under 2048 bits is refused, as an
+      # ECDSA key on another curve is: 2048 is the floor of NIST SP 800-131A.
       #
-      # @param pkey [OpenSSL::PKey::RSA] a private key
+      # @param pkey [OpenSSL::PKey::RSA] a private key of 2048 bits or more
       # @return [Key]
       def self.rsa(pkey)
         unless pkey.is_a?(OpenSSL::PKey::RSA) && pkey.private?
           raise Error,
                 "Key.rsa takes an OpenSSL::PKey::RSA private key"
         end
+        bits = pkey.n.num_bits
+        raise Error, "RSA key of #{bits} bits: want #{MIN_RSA_BITS} or more" if bits < MIN_RSA_BITS
 
         jwk = { "kty" => "RSA", "n" => Token.b64(pkey.n.to_s(2)), "e" => Token.b64(pkey.e.to_s(2)) }
         new("RS256", jwk) { pkey.sign("SHA256", it) }

@@ -23,6 +23,14 @@ class AutoBatchTest < Minitest::Test
     @fake = Gated.new
   end
 
+  def wait_queued(client, n)
+    queue = client.instance_variable_get(:@batcher).instance_variable_get(:@queue)
+    deadline = Cent::HTTP.now + 5
+    Thread.pass until queue.size >= n || Cent::HTTP.now > deadline
+
+    assert_operator queue.size, :>=, n
+  end
+
   def wait_for(n)
     deadline = Cent::HTTP.now + 5
     sleep 0.005 until @fake.requests.size >= n || Cent::HTTP.now > deadline
@@ -142,6 +150,50 @@ class AutoBatchTest < Minitest::Test
     @fake.gate << true
     closing.join
     queued.join
+  end
+
+  # Calls queued when close is called are still sent, and close waits for
+  # them.
+  def test_close_sends_the_calls_queued
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1))
+    first = Thread.new { client.info }
+    wait_for(1)
+    queued = Array.new(2) { Thread.new { client.info } }
+    wait_queued(client, 2)
+    closing = Thread.new { client.close(timeout: 5) }
+    sleep 0.2
+
+    assert_predicate closing, :alive?
+    assert_raises(Cent::ClosedError) { client.info }
+    @fake.gate << true
+    first.join
+    wait_for(2) # the queued calls' batch, sent after close
+
+    assert_equal 2, @fake.bodies("batch").first["commands"].size
+    assert_predicate closing, :alive?
+    @fake.gate << true
+    closing.value
+    queued.each { assert_equal Cent::InfoResult.new, it.value }
+  end
+
+  # A batch whose callers left at their deadlines is still waited for.
+  def test_close_waits_for_a_batch_whose_callers_left
+    client = @fake.client(auto_batch: Cent::AutoBatch.new(max_in_flight: 1))
+    first = Thread.new { client.info }
+    wait_for(1)
+    queued = Thread.new { client.info(timeout: 1) }
+    wait_queued(client, 1)
+    @fake.gate << true
+    first.join
+    wait_for(2) # the batch is in flight
+    assert_raises(Cent::TimeoutError) { queued.value } # its caller left
+    assert_raises(Cent::TimeoutError) { client.close(timeout: 0.05) }
+    closing = Thread.new { client.close(timeout: 5) }
+    sleep 0.2
+
+    assert_predicate closing, :alive?
+    @fake.gate << true
+    closing.value
   end
 
   def test_batch_runs_with_an_empty_fiber_storage_and_batch_context_gets_the_callers

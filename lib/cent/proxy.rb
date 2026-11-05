@@ -57,8 +57,11 @@ module Cent
   # Security: Centrifugo trusts what a proxy endpoint answers, and the endpoint
   # trusts what Centrifugo sends - a SubscribeRequest's user is the user
   # Centrifugo authenticated. Anyone else able to reach the endpoint could claim
-  # any user. Keep proxy endpoints reachable by Centrifugo only: on an internal
-  # network, or behind a check of a secret Centrifugo sends as a static header.
+  # any user. Keep proxy endpoints reachable by Centrifugo only: on a network
+  # only Centrifugo reaches; behind a secret header Centrifugo adds to every
+  # proxy request - the proxy's static_headers option - which the application
+  # checks before the handler; with TLS where the traffic leaves a trusted
+  # network.
   #
   # Centrifugo's GRPC proxy is not covered: generate GRPC code from proxy.proto
   # for it.

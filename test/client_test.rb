@@ -510,9 +510,35 @@ class ClientTest < Minitest::Test
     call = Thread.new { @client.info }
     sleep 0.01 until @fake.requests.size == 1
     assert_raises(Cent::TimeoutError) { @client.close(timeout: 0.05) }
+    assert_predicate call, :alive? # the call goes on
     gate << true
     @client.close(timeout: 5)
-    call.join
+
+    assert_equal Cent::InfoResult.new, call.value
+    assert_raises(Cent::ClosedError) { @client.info }
+  end
+
+  # close called again, and concurrently, waits as the first call does.
+  def test_close_called_again_and_concurrently_waits_alike
+    gate = Queue.new
+    @fake.on("info") do
+      gate.pop
+      {}
+    end
+    call = Thread.new { @client.info }
+    sleep 0.01 until @fake.requests.size == 1
+    early = Array.new(2) { Thread.new { @client.close(timeout: 0.05) } }
+
+    early.each { |t| assert_raises(Cent::TimeoutError) { t.value } }
+    closing = Array.new(2) { Thread.new { @client.close(timeout: 5) } }
+    sleep 0.2
+
+    assert(closing.all?(&:alive?))
+    gate << true
+    closing.each(&:value)
+
+    assert_equal Cent::InfoResult.new, call.value
+    @client.close(timeout: 5) # nothing left: returns at once
     assert_raises(Cent::ClosedError) { @client.info }
   end
 
@@ -691,6 +717,26 @@ class ClientTest < Minitest::Test
     end
     assert_equal "stop", err.message
     assert_instance_of Cent::HTTPError, err.cause
+    assert_equal 1, @fake.requests.size
+  end
+
+  # close waits for the attempt in flight; the retry stops at its next
+  # attempt, which fails with ClosedError.
+  def test_broadcast_with_retry_stops_at_its_next_attempt_when_closed
+    gate = Queue.new
+    @fake.on("broadcast") do
+      gate.pop
+      [503, {}, ""]
+    end
+    retrying = Thread.new { @client.broadcast_with_retry(channels: ["a"], data: 1, max_attempts: 5) { 0.3 } }
+    sleep 0.01 until @fake.requests.size == 1
+    closing = Thread.new { @client.close(timeout: 5) }
+    sleep 0.2
+
+    assert_predicate closing, :alive? # the attempt is in flight
+    gate << true
+    closing.value
+    assert_raises(Cent::ClosedError) { retrying.value }
     assert_equal 1, @fake.requests.size
   end
 

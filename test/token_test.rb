@@ -128,6 +128,10 @@ class TokenTest < Minitest::Test
 
   def test_unsupported_keys
     assert_raises(T::Error) { T::Key.ecdsa(OpenSSL::PKey::EC.generate("secp256k1")) }
+    small = OpenSSL::PKey::RSA.new(1024)
+
+    assert_match(/1024 bits/, assert_raises(T::Error) { T::Key.rsa(small) }.message)
+    assert_raises(T::Error) { T::Key.from_pem(small.private_to_pem) }
     assert_raises(T::Error) { T::Key.rsa(OpenSSL::PKey::RSA.new(2048).public_key) }
     assert_raises(T::Error) { T::Key.hmac("") }
     assert_raises(T::Error) { T::Key.from_pem("not a pem") }

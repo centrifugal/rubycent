@@ -2,7 +2,7 @@
 
 cent 5 is a rewrite, to the
 [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md),
-version 0.3.
+version 0.4.
 It needs Ruby 3.4 or newer and Centrifugo v6, and depends on nothing but the
 json gem: Faraday and the jwt gem are gone. An application which needs time to
 move can stay on `gem "cent", "~> 4.0"`, which keeps working.
