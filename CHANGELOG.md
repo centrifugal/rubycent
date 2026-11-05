@@ -1,7 +1,7 @@
 v5.0.0
 ======
 
-cent 5 is a rewrite, to the [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md), version 0.3, which gocent and the other Centrifugo server SDKs follow too. It needs Ruby 3.4 or newer and supports Centrifugo v6 - OSS and PRO; the map and shared poll methods need v6.8.0 or newer, `ApiError#temporary?` v6.10.0 or newer. The json gem is its only dependency: Faraday and jwt are gone. Migrating from cent 4: see [MIGRATING.md](https://github.com/centrifugal/rubycent/blob/master/MIGRATING.md); an application which needs time to move can stay on `gem "cent", "~> 4.0"`.
+cent 5 is a rewrite, to the [Centrifugo server SDK specification](https://github.com/centrifugal/gocent/blob/master/spec.md), version 0.4, which gocent and the other Centrifugo server SDKs follow too. It needs Ruby 3.4 or newer and supports Centrifugo v6 - OSS and PRO; the map and shared poll methods need v6.8.0 or newer, `ApiError#temporary?` v6.10.0 or newer. The json gem is its only dependency: Faraday and jwt are gone. Migrating from cent 4: see [MIGRATING.md](https://github.com/centrifugal/rubycent/blob/master/MIGRATING.md); an application which needs time to move can stay on `gem "cent", "~> 4.0"`.
 
 Generated from Centrifugo's protos at [e21aeb50](https://github.com/centrifugal/centrifugo/commit/e21aeb50ab6fc4d525fc817473574f728da6c3ad) on its master, after v6.10.2: the same messages as v6.10.2, with the comments the constants are generated from, and `ConnectResult.profile` for the connect proxy, which Centrifugo PRO newer than v6.10.2 reads.
 
@@ -15,7 +15,7 @@ Generated from Centrifugo's protos at [e21aeb50](https://github.com/centrifugal/
 * Its configuration is checked when it is created, `InvalidConfigError` naming the option and the fix: `api_endpoint:` (required, no default) or `api_endpoint_func:`, `api_key:` (nil for none) or `bearer_token_func:`, `headers:`, `request_timeout:`, `http_options:`, `http_client:`, `auto_batch:`, `on_request:`, `batch_context:`. `inspect` hides credentials.
 * An endpoint from `api_endpoint_func`, or a token from `bearer_token_func`, which cannot be sent fails the call with `InvalidConfigError` before sending. An exception of either function's own fails the call with `Cent::FunctionError`: its `function` is the option's name, its `cause` the exception, and `Cent.retryable?` judges it by that cause.
 * Net::HTTP connections kept alive in a pool, up to 256 to a host, idle ones closed after 50 seconds. Redirects are not followed: a redirect is an `HTTPError` hinting to check `api_endpoint`'s scheme and path. `http_options:` for TLS settings, `http_client:` for another HTTP library or a fake in tests.
-* `close` refuses new calls with `ClosedError` and waits for those in progress, automatic batches included; with `timeout:` it raises `TimeoutError` when they have not finished.
+* `close` refuses new calls with `ClosedError` and waits for those in progress, automatic batches included; with `timeout:` it raises `TimeoutError` when they have not finished, leaving them to go on. It may be called again, concurrently too, each call waiting alike; `broadcast_with_retry` stops at its next attempt with `ClosedError`.
 
 **Timeouts**
 
@@ -60,7 +60,7 @@ Generated from Centrifugo's protos at [e21aeb50](https://github.com/centrifugal/
 
 **Tokens and JWKS**
 
-* `Cent::Token.connection` and `Cent::Token.subscription` with every claim Centrifugo reads - `profile:` included, the compression profile of Centrifugo PRO - signed with `Cent::Token::Key.hmac`, `.rsa`, `.ecdsa`, `.ed25519` or `.from_pem` (HS256, RS256, ES256/384/512, EdDSA) from Ruby's OpenSSL. An expiry is required: a `Time`, or `:never` chosen explicitly.
+* `Cent::Token.connection` and `Cent::Token.subscription` with every claim Centrifugo reads - `profile:` included, the compression profile of Centrifugo PRO - signed with `Cent::Token::Key.hmac`, `.rsa`, `.ecdsa`, `.ed25519` or `.from_pem` (HS256, RS256, ES256/384/512, EdDSA) from Ruby's OpenSSL. RSA keys are of 2048 bits or more, ECDSA keys on P-256, P-384 or P-521: others are refused with `Cent::Token::Error` when the key is made. An expiry is required: a `Time`, or `:never` chosen explicitly.
 * `Cent::Token.jwks(*keys)` and the `Cent::Endpoints::JWKS` Rack app serve the public keys for Centrifugo's [`client.token.jwks_public_endpoint`](https://centrifugal.dev/docs/server/authentication), for key rotation without a restart.
 
 **API tokens (Centrifugo PRO)**
